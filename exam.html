@@ -755,12 +755,16 @@
       savingDiv.innerHTML = '<div style="font-size:48px">💾</div><div style="font-size:18px;font-weight:700;color:#fff">Saving your results...</div><div style="font-size:14px;color:#94a3b8">Please wait a moment</div>';
       document.body.appendChild(savingDiv);
 
+      // Try fallback Firebase init
+      if (!IA._getFirestore()) await IA._initFirebase();
+
       // Wait for Firebase to initialize (up to 15 seconds)
       let db = null;
       for (let i = 0; i < 30; i++) {
         await new Promise(r => setTimeout(r, 500));
         db = IA._getFirestore();
         if (db) break;
+        if (i === 10) await IA._initFirebase();
       }
 
       // Try to save to Firestore with retries

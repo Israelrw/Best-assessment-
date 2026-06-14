@@ -171,6 +171,8 @@
       let user  = users.find(u => (u.username === uname || u.email === uname) && u.password === btoa(pass));
 
       // Wait for Firebase to init (up to 10 seconds)
+      // Try fallback init first
+      if (!IA._getFirestore()) await IA._initFirebase();
       let db   = null;
       let auth = null;
       for (let i = 0; i < 20; i++) {
@@ -178,6 +180,7 @@
         db   = IA._getFirestore();
         auth = window._baAuth;
         if (db && auth) break;
+        if (i === 5 && !db) await IA._initFirebase();
       }
 
       // Try Firebase Auth (handles password resets)

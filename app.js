@@ -198,6 +198,32 @@ const IA = {
     }
     return null;
   },
+  _initFirebase: async () => {
+    if (IA._db || window._baDb) return;
+    try {
+      const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
+      const { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where, orderBy } =
+        await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
+      const cfg = {
+        apiKey: "AIzaSyAYcGqhjzyVD2vOwRMseT6Q_B_gxtopp_8",
+        authDomain: "israel-assessment.firebaseapp.com",
+        projectId: "israel-assessment",
+        storageBucket: "israel-assessment.firebasestorage.app",
+        messagingSenderId: "859727274810",
+        appId: "1:859727274810:web:ba1269ae2a217bebe8e603"
+      };
+      const apps = getApps();
+      const app = apps.length ? apps[0] : initializeApp(cfg);
+      const db = getFirestore(app);
+      window._baDb = db;
+      window._baOps = { collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where, orderBy };
+      IA._db = db;
+      IA._firestoreOps = async () => window._baOps;
+      console.log('Firebase initialized via app.js fallback');
+    } catch(e) {
+      console.warn('Firebase fallback init failed:', e.message);
+    }
+  },
   _firestoreOps: async () => {
     // Works with Firebase v9 modular SDK
     const m = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
