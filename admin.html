@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Control Room — Best Assessment</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc }
+      from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+    function initFirebase() {
+      try {
+        const cfg = {
+          apiKey:"AIzaSyAYcGqhjzyVD2vOwRMseT6Q_B_gxtopp_8",
+          authDomain:"israel-assessment.firebaseapp.com",
+          projectId:"israel-assessment",
+          storageBucket:"israel-assessment.firebasestorage.app",
+          messagingSenderId:"859727274810",
+          appId:"1:859727274810:web:ba1269ae2a217bebe8e603"
+        };
+        const app = initializeApp(cfg);
+        const db  = getFirestore(app);
+        window._baDb  = db;
+        window._baOps = { collection, doc, setDoc, getDoc, getDocs, deleteDoc };
+      } catch(e) { console.warn('Firebase init failed:', e.message); }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initFirebase);
+    else initFirebase();
+  </script>
+  <style>
+    .lock-screen {
+      position:fixed;inset:0;background:var(--bg,#0f1117);display:flex;align-items:center;
+      justify-content:center;z-index:9999;flex-direction:column;gap:16px;padding:24px;
+    }
+    .lock-screen h1{font-size:28px;margin:0;text-align:center}
+    .lock-screen p{color:var(--text2,#888);margin:0;text-align:center}
+    .lock-input{width:100%;max-width:320px;padding:14px 16px;font-size:18px;text-align:center;
+      letter-spacing:4px;border-radius:12px;border:2px solid var(--border,#2a2d3a);
+      background:var(--surface,#1a1d27);color:var(--text1,#fff);outline:none;box-sizing:border-box}
+    .lock-input:focus{border-color:#6366f1}
+    .lock-error{color:#ef4444;font-size:13px;min-height:18px}
+    .admin-wrap{display:none;max-width:1000px;margin:0 auto;padding:20px 16px}
+    .admin-wrap.visible{display:block}
+    .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+    .stat-num{font-size:28px;font-weight:900}
+    .stat-lbl{font-size:11px;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+    .tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .tab{padding:10px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);border-bottom:2px solid transparent;transition:.2s}
+    .tab.active{color:#6366f1;border-bottom-color:#6366f1}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px}
+    .user-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .user-row:last-child{border-bottom:none}
+    .avatar{width:38px;height:38px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0}
+    .plan-badge{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;text-transform:uppercase}
+    .b-free{background:rgba(100,100,100,.2);color:#888}
+    .b-basic{background:rgba(99,102,241,.2);color:#818cf8}
+    .b-plus{background:rgba(245,158,11,.2);color:#fbbf24}
+    .b-pro{background:rgba(34,197,94,.2);color:#4ade80}
+    .notif-row{padding:12px;border-radius:10px;margin-bottom:8px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2)}
+    .notif-row.unread{background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.5)}
+    .tx-badge{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.3);padding:2px 8px;border-radius:5px;font-family:monospace;font-size:12px}
+    .code-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
+    .code-row:last-child{border-bottom:none}
+    .field-lbl{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+    .field-inp{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2,#1e2130);color:var(--text1);font-size:14px;box-sizing:border-box}
+    .field-inp:focus{outline:none;border-color:#6366f1}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+    @media(max-width:480px){.form-row{grid-template-columns:1fr}}
+    .notif-dot{width:8px;height:8px;border-radius:50%;background:#6366f1;display:inline-block;margin-right:6px;animation:pulse 1.5s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  </style>
+</head>
+<body>
+<div class="bg-grid"></div>
+
+<!-- LOCK SCREEN -->
+<div class="lock-screen" id="lockScreen">
+  <div style="font-size:52px">🔐</div>
+  <h1>Admin Control Room</h1>
+  <p>Best Assessment · Owner Access Only</p>
+  <input type="password" class="lock-input" id="adminPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')unlockAdmin()"/>
+  <button onclick="unlockAdmin()" class="btn btn-primary" style="width:100%;max-width:320px;padding:14px;font-size:16px">🔓 Unlock</button>
+  <div class="lock-error" id="lockErr"></div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-wrap" id="adminWrap">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h1 style="margin:0;font-size:22px">🛡️ Admin Control Room</h1>
+      <p style="margin:4px 0 0;color:var(--text2);font-size:13px">Best Assessment · Owner Dashboard</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="cursor:pointer;font-size:18px" onclick="switchTab('notifs')">
+        🔔 <span id="notifBadge" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;display:none">0</span>
+      </span>
+      <button onclick="refreshAll()" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      <button onclick="lockAdmin()" class="btn btn-secondary btn-sm">🔒 Lock</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num" id="sUsers" style="color:#6366f1">—</div><div class="stat-lbl">Total Users</div></div>
+    <div class="stat-card"><div class="stat-num" id="sPaid"  style="color:#22c55e">—</div><div class="stat-lbl">Paid Plans</div></div>
+    <div class="stat-card"><div class="stat-num" id="sCodes" style="color:#f59e0b">—</div><div class="stat-lbl">Active Codes</div></div>
+    <div class="stat-card"><div class="stat-num" id="sNotifs" style="color:#ef4444">—</div><div class="stat-lbl">Unread Alerts</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('notifs')" id="tab-notifs">🔔 Notifications</div>
+    <div class="tab" onclick="switchTab('users')"  id="tab-users">👥 Users</div>
+    <div class="tab" onclick="switchTab('codes')"  id="tab-codes">🔑 Codes</div>
+    <div class="tab" onclick="switchTab('gen')"    id="tab-gen">✨ Generate</div>
+  </div>
+
+  <!-- NOTIFICATIONS -->
+  <div class="tab-panel active" id="panel-notifs">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 style="margin:0">Payment Notifications</h3>
+        <button onclick="markAllRead()" class="btn btn-secondary btn-sm">✓ All Read</button>
+      </div>
+      <div id="notifList"><div style="text-align:center;color:var(--text2);padding:30px">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div class="tab-panel" id="panel-users">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">All Users</h3>
+        <input type="text" id="userSearch" placeholder="Search..." oninput="filterUsers()"
+          style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2,#1e2130);color:var(--text1);font-size:13px;width:180px"/>
+      </div>
+      <div id="userList"><div style="text-align:center;color:var(--text2);padding:30px">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- CODES -->
+  <div class="tab-panel" id="panel-codes">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">All Activation Codes</h3>
+        <select id="codeFilter" onchange="loadCodesTab()" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2,#1e2130);color:var(--text1);font-size:12px">
+          <option value="all">All</option>
+          <option value="active">Active</option>
+          <option value="used">Used</option>
+          <option value="expired">Expired</option>
+        </select>
+      </div>
+      <div id="codesList"><div style="text-align:center;color:var(--text2);padding:30px">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- GENERATE -->
+  <div class="tab-panel" id="panel-gen">
+    <div class="card">
+      <h3 style="margin:0 0 16px">✨ Generate Activation Code</h3>
+      <div class="form-row">
+        <div>
+          <div class="field-lbl">Plan</div>
+          <select id="genPlan" class="field-inp">
+            <option value="basic">Basic — 2,500 RWF</option>
+            <option value="plus">Basic Plus — 3,500 RWF</option>
+            <option value="pro">Pro — 5,000 RWF</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-lbl">Valid For (days)</div>
+          <input type="number" id="genDays" value="30" min="1" max="365" class="field-inp"/>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div class="field-lbl">MoMo Transaction ID <span style="color:#ef4444">*required</span></div>
+        <input type="text" id="genTxId" placeholder="e.g. 1234567890" class="field-inp" style="font-family:monospace;letter-spacing:2px"/>
+      </div>
+      <div class="form-row">
+        <div>
+          <div class="field-lbl">User Name (optional)</div>
+          <input type="text" id="genName" placeholder="e.g. John Doe" class="field-inp"/>
+        </div>
+        <div>
+          <div class="field-lbl">Phone / Notes (optional)</div>
+          <input type="text" id="genNotes" placeholder="+250..." class="field-inp"/>
+        </div>
+      </div>
+      <button onclick="generateCode()" class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;margin-top:4px">✨ Generate Code</button>
+    </div>
+
+    <div id="genResult" style="display:none" class="card">
+      <div style="text-align:center">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Activation Code</div>
+        <div id="genCodeDisplay" style="font-size:34px;font-weight:900;letter-spacing:6px;color:#22c55e;font-family:monospace;margin-bottom:8px"></div>
+        <div id="genCodeDetails" style="font-size:13px;color:var(--text2);margin-bottom:16px"></div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          <button onclick="copyGenCode()" class="btn btn-primary">📋 Copy Code</button>
+          <button onclick="shareCode()"   class="btn btn-secondary">📤 Share via WhatsApp</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- end admin-wrap -->
+
+<script src="app.js"></script>
+<script>
+  const ADMIN_PASSWORD = 'BA@Israel2026';
+  let _allUsers = [], _allCodes = [], _notifs = [], _lastCode = '', _lastPlan = '';
+
+  function unlockAdmin() {
+    const p = document.getElementById('adminPass').value;
+    if (p === ADMIN_PASSWORD) {
+      document.getElementById('lockScreen').style.display = 'none';
+      document.getElementById('adminWrap').classList.add('visible');
+      refreshAll();
+    } else {
+      const err = document.getElementById('lockErr');
+      err.textContent = '❌ Wrong password.';
+      document.getElementById('adminPass').value = '';
+      setTimeout(() => err.textContent = '', 3000);
+    }
+  }
+
+  function lockAdmin() {
+    document.getElementById('lockScreen').style.display = 'flex';
+    document.getElementById('adminWrap').classList.remove('visible');
+    document.getElementById('adminPass').value = '';
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    document.getElementById('panel-' + name).classList.add('active');
+    if (name === 'notifs') loadNotifs();
+    if (name === 'users')  loadUsers();
+    if (name === 'codes')  loadCodesTab();
+  }
+
+  async function getDB() {
+    for (let i = 0; i < 12; i++) {
+      if (window._baDb) return window._baDb;
+      await new Promise(r => setTimeout(r, 400));
+    }
+    return null;
+  }
+
+  async function refreshAll() {
+    loadUsers();
+    await Promise.all([loadNotifs(), loadCodesTab()]);
+    updateStats();
+  }
+
+  function updateStats() {
+    document.getElementById('sUsers').textContent  = _allUsers.length;
+    document.getElementById('sPaid').textContent   = _allUsers.filter(u => u.plan && u.plan !== 'free').length;
+    document.getElementById('sCodes').textContent  = _allCodes.filter(c => !c.used && new Date(c.expiry) > new Date()).length;
+    const unread = _notifs.filter(n => !n.read).length;
+    document.getElementById('sNotifs').textContent = unread;
+    const badge = document.getElementById('notifBadge');
+    badge.style.display = unread > 0 ? 'inline' : 'none';
+    badge.textContent = unread;
+  }
+
+  // ── Notifications ──
+  async function loadNotifs() {
+    const el = document.getElementById('notifList');
+    el.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px">Loading...</div>';
+    const db = await getDB();
+    if (!db) { el.innerHTML = '<div style="color:#ef4444;padding:12px">⚠ Firebase not connected</div>'; return; }
+    try {
+      const { collection, getDocs } = window._baOps;
+      const snap = await getDocs(collection(db, 'notifications'));
+      _notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      _notifs.sort((a,b) => new Date(b.activatedAt||0) - new Date(a.activatedAt||0));
+      if (!_notifs.length) {
+        el.innerHTML = '<div style="text-align:center;color:var(--text2);padding:30px">No notifications yet.<br><small>They appear when users activate plans.</small></div>';
+        updateStats(); return;
+      }
+      const pc = { basic:'#818cf8', plus:'#fbbf24', pro:'#4ade80' };
+      el.innerHTML = _notifs.map(n => {
+        const d = n.activatedAt ? new Date(n.activatedAt).toLocaleString('en-GB') : '—';
+        return `<div class="notif-row ${n.read?'':'unread'}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              ${!n.read ? '<span class="notif-dot"></span>' : ''}
+              <strong>${n.userName||'User'}</strong> activated
+              <strong style="color:${pc[n.plan]||'#fff'}">${(n.plan||'').toUpperCase()}</strong> plan
+              <div style="font-size:12px;color:var(--text2);margin-top:3px">📧 ${n.userEmail||'—'} &nbsp;·&nbsp; 🕐 ${d}</div>
+              <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                ${n.momoTxId ? `<span class="tx-badge">TX: ${n.momoTxId}</span>` : '<span style="color:#ef4444;font-size:11px">⚠ No TX ID</span>'}
+                ${n.code ? `<span style="font-size:11px;color:var(--text2);font-family:monospace">Code: ${n.code}</span>` : ''}
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0">
+              ${!n.read ? `<button onclick="markRead('${n.id}')" class="btn btn-secondary btn-sm" style="font-size:11px">✓ Read</button>` : ''}
+              <button onclick="deleteNotif('${n.id}')" style="background:rgba(239,68,68,.15);color:#ef4444;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px">🗑</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+      updateStats();
+    } catch(e) { el.innerHTML = '<div style="color:#ef4444;padding:12px">Error: ' + e.message + '</div>'; }
+  }
+
+  async function markRead(id) {
+    const db = await getDB(); if (!db) return;
+    const n = _notifs.find(x => x.id === id);
+    if (!n) return;
+    try { const { doc, setDoc } = window._baOps; await setDoc(doc(db,'notifications',id),{...n,read:true}); } catch(e){}
+    loadNotifs();
+  }
+
+  async function markAllRead() {
+    const db = await getDB(); if (!db) return;
+    try {
+      const { doc, setDoc } = window._baOps;
+      await Promise.all(_notifs.filter(n=>!n.read).map(n=>setDoc(doc(db,'notifications',n.id),{...n,read:true})));
+    } catch(e){}
+    loadNotifs();
+  }
+
+  async function deleteNotif(id) {
+    if (!confirm('Delete this notification?')) return;
+    const db = await getDB(); if (!db) return;
+    try { const { doc, deleteDoc } = window._baOps; await deleteDoc(doc(db,'notifications',id)); } catch(e){}
+    loadNotifs();
+  }
+
+  // ── Users ──
+  function loadUsers() {
+    const el = document.getElementById('userList');
+    try {
+      _allUsers = (IA && IA.getUsers) ? IA.getUsers() : [];
+      _allUsers.sort((a,b) => (a.firstName||'').localeCompare(b.firstName||''));
+      renderUsers(_allUsers);
+      updateStats();
+    } catch(e) { el.innerHTML = '<div style="color:#ef4444;padding:12px">Error: ' + e.message + '</div>'; }
+  }
+
+  function renderUsers(users) {
+    const el = document.getElementById('userList');
+    if (!users.length) { el.innerHTML = '<div style="text-align:center;color:var(--text2);padding:30px">No users found</div>'; return; }
+    const badge = p => {
+      const cls = {free:'b-free',basic:'b-basic',plus:'b-plus',pro:'b-pro'}[p||'free']||'b-free';
+      return `<span class="plan-badge ${cls}">${(p||'free').toUpperCase()}</span>`;
+    };
+    el.innerHTML = users.map(u => {
+      const name = ((u.firstName||'') + ' ' + (u.lastName||'')).trim() || 'Unknown';
+      const ini  = ((u.firstName||'?')[0]+(u.lastName||'?')[0]).toUpperCase();
+      const exp  = u.planExpiry ? new Date(u.planExpiry).toLocaleDateString('en-GB') : '';
+      return `<div class="user-row">
+        <div class="avatar">${ini}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:14px">${name}</div>
+          <div style="font-size:12px;color:var(--text2)">${u.email||'—'} · ${u.testsCreated||0} tests · ${u.lessonPlansCreated||0} plans${exp?' · Exp: '+exp:''}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          ${badge(u.plan)}
+          <button onclick="manualUpgrade('${u.id}')" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">⬆ Upgrade</button>
+          <button onclick="manualReset('${u.id}')" style="background:rgba(239,68,68,.1);color:#ef4444;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">↓ Reset</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function filterUsers() {
+    const q = document.getElementById('userSearch').value.toLowerCase();
+    renderUsers(_allUsers.filter(u =>
+      (u.firstName||'').toLowerCase().includes(q) ||
+      (u.lastName||'').toLowerCase().includes(q) ||
+      (u.email||'').toLowerCase().includes(q)
+    ));
+  }
+
+  function manualUpgrade(uid) {
+    const p = prompt('Plan to assign (basic / plus / pro):');
+    if (!p || !['basic','plus','pro'].includes(p.trim().toLowerCase())) { alert('Invalid. Use: basic, plus or pro'); return; }
+    const users = IA.getUsers();
+    const i = users.findIndex(u => u.id === uid);
+    if (i < 0) return;
+    const exp = new Date(); exp.setMonth(exp.getMonth()+1);
+    users[i].plan = p.trim().toLowerCase();
+    users[i].planExpiry = exp.toISOString();
+    IA.saveUsers(users);
+    _allUsers = users;
+    renderUsers(_allUsers);
+    updateStats();
+    alert('✅ Upgraded to ' + users[i].plan.toUpperCase());
+  }
+
+  function manualReset(uid) {
+    if (!confirm('Reset to Free plan?')) return;
+    const users = IA.getUsers();
+    const i = users.findIndex(u => u.id === uid);
+    if (i < 0) return;
+    users[i].plan = 'free';
+    delete users[i].planExpiry;
+    IA.saveUsers(users);
+    _allUsers = users;
+    renderUsers(_allUsers);
+    updateStats();
+  }
+
+  // ── Codes ──
+  async function loadCodesTab() {
+    const el = document.getElementById('codesList');
+    el.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px">Loading...</div>';
+    const db = await getDB();
+    if (!db) { el.innerHTML = '<div style="color:#ef4444;padding:12px">⚠ Firebase not connected</div>'; return; }
+    try {
+      const { collection, getDocs } = window._baOps;
+      const snap = await getDocs(collection(db,'codes'));
+      _allCodes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      _allCodes.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+      const f = document.getElementById('codeFilter').value;
+      let list = _allCodes;
+      if (f==='active')  list = _allCodes.filter(c => !c.used && new Date(c.expiry)>new Date());
+      if (f==='used')    list = _allCodes.filter(c => c.used);
+      if (f==='expired') list = _allCodes.filter(c => !c.used && new Date(c.expiry)<new Date());
+      if (!list.length) { el.innerHTML = '<div style="text-align:center;color:var(--text2);padding:30px">No codes found</div>'; updateStats(); return; }
+      const pc = { basic:'#818cf8', plus:'#fbbf24', pro:'#4ade80' };
+      el.innerHTML = list.map(c => {
+        const exp = new Date(c.expiry) < new Date();
+        const st = c.used ? '<span style="color:#22c55e">✅ Used</span>' : exp ? '<span style="color:#ef4444">❌ Expired</span>' : '<span style="color:#22c55e">🟢 Active</span>';
+        const ed = new Date(c.expiry).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+        return `<div class="code-row">
+          <div>
+            <div style="font-family:monospace;font-size:15px;font-weight:800;letter-spacing:2px;color:${pc[c.plan]||'#fff'}">${c.code}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:3px">${(c.plan||'').toUpperCase()} · ${c.studentName||'—'} · Exp: ${ed}</div>
+            ${c.momoTxId ? `<span class="tx-badge" style="margin-top:4px;display:inline-block">TX: ${c.momoTxId}</span>` : '<span style="color:#ef4444;font-size:11px">No TX ID</span>'}
+            ${c.usedByName ? `<div style="font-size:11px;color:var(--text2);margin-top:2px">Used by: ${c.usedByName}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            ${st}
+            ${!c.used && !exp ? `<button onclick="revokeCode('${c.code}')" style="background:rgba(239,68,68,.15);color:#ef4444;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">Revoke</button>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+      updateStats();
+    } catch(e) { el.innerHTML = '<div style="color:#ef4444;padding:12px">Error: ' + e.message + '</div>'; }
+  }
+
+  async function revokeCode(code) {
+    if (!confirm('Revoke ' + code + '?')) return;
+    const db = await getDB(); if (!db) return;
+    try { const { doc, deleteDoc } = window._baOps; await deleteDoc(doc(db,'codes',code)); } catch(e) { alert('Failed'); return; }
+    loadCodesTab();
+  }
+
+  // ── Generate ──
+  function makeCode(plan) {
+    const prefix = {basic:'BSC',plus:'PLS',pro:'PRO'}[plan]||'ACT';
+    return prefix + '-' + Math.random().toString(36).substring(2,8).toUpperCase();
+  }
+
+  async function generateCode() {
+    const plan  = document.getElementById('genPlan').value;
+    const days  = parseInt(document.getElementById('genDays').value) || 30;
+    const txId  = document.getElementById('genTxId').value.trim();
+    const name  = document.getElementById('genName').value.trim();
+    const notes = document.getElementById('genNotes').value.trim();
+    if (!txId) { alert('⚠ Please enter the MoMo Transaction ID first.'); return; }
+    const code   = makeCode(plan);
+    const expiry = new Date(Date.now() + days*86400000).toISOString();
+    const pNames = {basic:'Basic',plus:'Basic Plus',pro:'Pro'};
+    const codeDoc = { code, plan, expiry, studentName: name||'Any', momoTxId: txId, notes: notes||'', createdAt: new Date().toISOString(), createdBy:'admin', used: false };
+    const db = await getDB();
+    if (db) {
+      try { const { doc, setDoc } = window._baOps; await setDoc(doc(db,'codes',code), codeDoc); }
+      catch(e) { console.warn('Save failed:', e); }
+    }
+    _lastCode = code; _lastPlan = plan;
+    document.getElementById('genCodeDisplay').textContent = code;
+    document.getElementById('genCodeDetails').textContent = pNames[plan] + ' · ' + days + ' days · TX: ' + txId + (name?' · '+name:'');
+    document.getElementById('genResult').style.display = 'block';
+    document.getElementById('genResult').style.border = '2px solid #22c55e';
+    document.getElementById('genTxId').value = '';
+    document.getElementById('genName').value = '';
+    document.getElementById('genNotes').value = '';
+    loadCodesTab();
+  }
+
+  function copyGenCode() {
+    if (navigator.clipboard) navigator.clipboard.writeText(_lastCode).then(() => alert('✅ Copied: ' + _lastCode));
+    else prompt('Copy this code:', _lastCode);
+  }
+
+  function shareCode() {
+    const pNames = {basic:'Basic — 2,500 RWF',plus:'Basic Plus — 3,500 RWF',pro:'Pro — 5,000 RWF'};
+    const msg = 'Your Best Assessment activation code:\n\n🔑 CODE: ' + _lastCode + '\nPlan: ' + (pNames[_lastPlan]||_lastPlan) + '\n\nHow to activate:\n1. Open the app\n2. Go to Upgrade\n3. Choose your plan\n4. Enter your MoMo Transaction ID\n5. Enter the code above\n6. Tap "Activate Plan"\n\nThank you for subscribing! 🎉';
+    if (navigator.share) { navigator.share({title:'Activation Code',text:msg}).catch(()=>{}); }
+    else { window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank'); }
+  }
+</script>
+</body>
+</html>

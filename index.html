@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Best Assessment — Student Portal</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="portal-page">
+
+  <!-- ══════════════════════════════
+       3D SPLASH SCREEN — auto-hides
+  ══════════════════════════════ -->
+  <div id="splashScreen" style="
+    position:fixed;inset:0;z-index:99999;
+    background:linear-gradient(135deg,#050a1a 0%,#0d1b3e 50%,#050a1a 100%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    transition:opacity 0.7s ease,transform 0.7s ease;
+  ">
+    <style>
+      @keyframes ba-float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+      @keyframes ba-glow   { 0%,100%{text-shadow:0 0 30px #4f8ef7,0 0 60px #4f8ef7,0 0 100px #4f8ef788,4px 8px 0 #1a3a8f,8px 16px 0 #0d2060,12px 24px 0 #080f30}
+                             50%{text-shadow:0 0 50px #7bb3ff,0 0 90px #4f8ef7,0 0 130px #4f8ef7aa,4px 8px 0 #1a3a8f,8px 16px 0 #0d2060,12px 24px 0 #080f30} }
+      @keyframes ba-sub    { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+      @keyframes ba-bar    { from{width:0} to{width:100%} }
+      @keyframes ba-fade   { from{opacity:0} to{opacity:0.6} }
+      .ba-3d-text {
+        font-size:clamp(42px,9vw,88px);
+        font-weight:900;
+        font-family:'Segoe UI',system-ui,sans-serif;
+        letter-spacing:-1px;
+        color:#e8f0ff;
+        animation:ba-float 3s ease-in-out infinite, ba-glow 2.5s ease-in-out infinite;
+        text-shadow:0 0 30px #4f8ef7,0 0 60px #4f8ef7,0 0 100px #4f8ef788,
+                    4px 8px 0 #1a3a8f,8px 16px 0 #0d2060,12px 24px 0 #080f30;
+        line-height:1.1;
+        text-align:center;
+        padding:0 20px;
+      }
+      .ba-sub-text {
+        font-size:14px; font-weight:600; letter-spacing:4px;
+        color:#7bb3ff; text-transform:uppercase; margin-top:18px;
+        animation:ba-sub 0.8s 0.4s ease both;
+      }
+      .ba-progress-wrap {
+        margin-top:44px; width:220px; height:3px;
+        background:rgba(79,142,247,0.15); border-radius:3px; overflow:hidden;
+        animation:ba-fade 0.4s 0.2s ease both;
+      }
+      .ba-progress-bar {
+        height:100%; border-radius:3px;
+        background:linear-gradient(90deg,#4f8ef7,#a78bfa);
+        animation:ba-bar 2s 0.3s cubic-bezier(0.4,0,0.2,1) forwards;
+      }
+      .ba-stars { position:absolute;inset:0;pointer-events:none;overflow:hidden; }
+      .ba-star  { position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;opacity:0;
+                  animation:ba-fade 1s ease forwards; }
+    </style>
+    <!-- Stars background -->
+    <div class="ba-stars" id="baStars"></div>
+    <div class="ba-3d-text">Best<br/>Assessment</div>
+    <div class="ba-sub-text">Assessment & Lesson Planning</div>
+    <div class="ba-progress-wrap"><div class="ba-progress-bar"></div></div>
+  </div>
+  <script>
+    // Generate random stars
+    const starsEl = document.getElementById('baStars');
+    for (let i = 0; i < 80; i++) {
+      const s = document.createElement('div');
+      s.className = 'ba-star';
+      s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;
+        opacity:${Math.random()*0.6+0.1};
+        width:${Math.random()<0.15?3:Math.random()<0.4?2:1}px;
+        height:${Math.random()<0.15?3:Math.random()<0.4?2:1}px;
+        animation-delay:${Math.random()*0.8}s`;
+      starsEl.appendChild(s);
+    }
+    // Auto-hide after 2.3s
+    setTimeout(() => {
+      const sp = document.getElementById('splashScreen');
+      sp.style.opacity = '0';
+      sp.style.transform = 'scale(1.04)';
+      setTimeout(() => sp.remove(), 700);
+    }, 2300);
+  </script>
+
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+
+  <header class="site-header">
+    <div class="logo">
+      <div class="logo-mark">IA</div>
+      <span class="logo-text">Best Assessment</span>
+    </div>
+    <nav class="site-nav">
+      <a href="login.html" class="nav-item accent">Login →</a>
+    </nav>
+  </header>
+
+  <main class="portal-main">
+    <div class="portal-left">
+      <div class="portal-badge">🎓 ASSESSMENT & LESSON PLANNING</div>
+      <h1 class="portal-title">Start Your<br/><span class="hl">Assessment</span></h1>
+      <p class="portal-sub">Enter your details below. Your results are graded automatically and instantly.</p>
+
+      <!-- Feature highlights -->
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:10px;background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:10px;padding:10px 14px">
+          <span style="font-size:20px">📝</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text1)">Auto-Graded Assessments</div>
+            <div style="font-size:11px;color:var(--text2)">Create tests, share links, get instant results</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:10px 14px">
+          <span style="font-size:20px">📚</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text1)">AI-Powered Lesson Plans</div>
+            <div style="font-size:11px;color:var(--text2)">Rwanda CBC format, AI-generated activities, PDF download</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:10px 14px">
+          <span style="font-size:20px">🏆</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text1)">Everything in One Place</div>
+            <div style="font-size:11px;color:var(--text2)">The complete teacher toolkit for Rwanda schools</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="portal-form" id="portalForm">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="studentName" placeholder="e.g. Amara Nkosi" autocomplete="off"/>
+        </div>
+        <div class="form-group">
+          <label>Student ID / Index Number</label>
+          <input type="text" id="studentId" placeholder="e.g. STU-2024-001" autocomplete="off"/>
+        </div>
+        <div class="form-group">
+          <label>Select Assessment</label>
+          <select id="testSelect">
+            <option value="">— Choose a test —</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-lg" onclick="startAssessment()">
+          Begin Assessment →
+        </button>
+        <p style="font-size:12px;color:var(--text3);margin-top:8px">⚠ Once started, the timer cannot be paused.</p>
+      </div>
+    </div>
+
+    <div class="portal-right">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-num" id="totalTests">0</div>
+          <div class="stat-label">Tests Available</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="totalAttempts">0</div>
+          <div class="stat-label">Attempts Today</div>
+        </div>
+        <div class="stat-card accent" style="grid-column:span 2">
+          <div class="stat-num">Auto</div>
+          <div class="stat-label">Instant Grading</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:13px;font-weight:700;color:var(--text1);margin-bottom:8px">🌟 Are you a teacher?</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Access assessments + AI lesson plans in one platform</div>
+        <a href="login.html" class="btn btn-primary" style="display:inline-block;padding:10px 24px;font-size:13px">Teacher Login →</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    // If user is already logged in, redirect to their dashboard
+    if (typeof IA !== 'undefined' && IA.getCurrentUser && IA.getCurrentUser()) {
+      window.location.href = 'tests.html';
+    }
+
+    function loadStats() {
+      const tests = IA.getTests();
+      const results = IA.getResults();
+      const today = new Date().toDateString();
+      const todayAttempts = results.filter(r => new Date(r.date).toDateString() === today).length;
+
+      document.getElementById('totalTests').textContent = tests.length;
+      document.getElementById('totalAttempts').textContent = todayAttempts;
+
+      const sel = document.getElementById('testSelect');
+      const now = new Date();
+      sel.innerHTML = '<option value="">— Choose a test —</option>';
+
+      // Filter available tests (within schedule window if set)
+      const available = tests.filter(t => {
+        if (t.scheduleStart && new Date(t.scheduleStart) > now) return false;
+        if (t.scheduleEnd && new Date(t.scheduleEnd) < now) return false;
+        return true;
+      });
+
+      if (available.length === 0) {
+        const opt = document.createElement('option');
+        opt.disabled = true;
+        opt.textContent = 'No tests available right now';
+        sel.appendChild(opt);
+        return;
+      }
+
+      available.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `${t.title} (${t.questions.length}Q · ${t.duration}min)`;
+        sel.appendChild(opt);
+      });
+    }
+
+    function startAssessment() {
+      const name = document.getElementById('studentName').value.trim();
+      const id = document.getElementById('studentId').value.trim();
+      const testId = document.getElementById('testSelect').value;
+
+      if (!name) { IA.toast('Please enter your name','error'); return; }
+      if (!id)   { IA.toast('Please enter your student ID','error'); return; }
+      if (!testId) { IA.toast('Please select a test','error'); return; }
+
+      IA.ss('student', { name, id });
+      IA.ss('testId', testId);
+      window.location.href = 'exam.html';
+    }
+
+    // If URL has ?test=ID, skip portal and go straight to exam
+    const urlTest = new URLSearchParams(location.search).get('test');
+    if (urlTest) {
+      window.location.replace('exam.html?test=' + encodeURIComponent(urlTest));
+    }
+
+    loadStats();
+
+    // Animate stat numbers counting up
+    document.querySelectorAll('.stat-num').forEach(el => {
+      if (isNaN(el.textContent)) return;
+      const target = parseInt(el.textContent);
+      let curr = 0;
+      const step = Math.ceil(target / 20) || 1;
+      const t = setInterval(() => {
+        curr = Math.min(curr + step, target);
+        el.textContent = curr;
+        if (curr >= target) clearInterval(t);
+      }, 50);
+    });
+  </script>
+</body>
+</html>

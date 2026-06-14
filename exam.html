@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Assessment — Best Assessment</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script>MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']] } };</script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+  <style>
+    /* Student intake screen */
+    .intake-page {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 40px 20px;
+    }
+    .intake-card {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius-lg); padding: 40px 44px;
+      width: 100%; max-width: 480px; box-shadow: var(--shadow-lg);
+      animation: authFadeIn 0.5s ease; position: relative; z-index: 1;
+    }
+    @keyframes authFadeIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .intake-meta {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; margin-top: 6px;
+    }
+    /* Exam blocked screen */
+    .exam-blocked {
+      position: fixed; inset: 0; z-index: 99999;
+      background: #0a0000; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; text-align: center; padding: 40px;
+    }
+    .blocked-icon { font-size: 80px; margin-bottom: 20px; animation: shake 0.5s ease; }
+    @keyframes shake {
+      0%,100%{transform:rotate(0)} 25%{transform:rotate(-10deg)} 75%{transform:rotate(10deg)}
+    }
+    .blocked-title { font-size: 32px; font-weight: 900; color: var(--red); margin-bottom: 12px; }
+    .blocked-msg   { font-size: 16px; color: var(--text2); max-width: 400px; line-height: 1.6; }
+    /* Not-found screen */
+    .notfound-page {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; text-align: center; padding: 40px; position: relative; z-index: 1;
+    }
+  </style>
+  <!-- Firebase v9 modular SDK — initialized AFTER app.js -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where }
+      from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+    function initFirebase() {
+      try {
+        // Config hardcoded directly for reliability
+        const cfg = {
+          apiKey:            "AIzaSyAYcGqhjzyVD2vOwRMseT6Q_B_gxtopp_8",
+          authDomain:        "israel-assessment.firebaseapp.com",
+          projectId:         "israel-assessment",
+          storageBucket:     "israel-assessment.firebasestorage.app",
+          messagingSenderId: "859727274810",
+          appId:             "1:859727274810:web:ba1269ae2a217bebe8e603"
+        };
+        const app = initializeApp(cfg);
+        const db  = getFirestore(app);
+        if (typeof IA !== 'undefined') {
+          IA._db = db;
+          IA._firestoreOps = async () => ({ collection, doc, setDoc, getDoc, getDocs, query, where });
+          IA._getFirestore = () => db;
+        }
+        window._baDb = db;
+        window._baOps = { collection, doc, setDoc, getDoc, getDocs, query, where };
+        console.log('[BA] Firebase connected ✓');
+      } catch(e) {
+        console.warn('[BA] Firebase init failed:', e.message);
+      }
+    }
+
+    // Wait for app.js to load then init
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initFirebase);
+    } else {
+      initFirebase();
+    }
+  </script>
+</head>
+<body class="exam-page">
+  <div class="bg-grid"></div>
+
+  <!-- ══════════════════════════════
+       SCREEN 1: Student Intake Form
+       Shown when student opens share link
+  ══════════════════════════════ -->
+  <div id="screenIntake" class="intake-page hidden">
+    <div class="intake-card">
+      <div class="auth-logo" style="margin-bottom:20px">
+        <div class="logo-mark">BA</div>
+        <div>
+          <div style="font-weight:900;font-size:17px;">Best Assessment</div>
+          <div style="font-size:11px;color:var(--text2);">Auto Grading System</div>
+        </div>
+      </div>
+
+      <div class="auth-badge" id="intakeBadge">📋 Assessment</div>
+      <h2 id="intakeTitle" style="font-size:24px;font-weight:900;margin:10px 0 6px"></h2>
+      <div class="intake-meta" id="intakeMeta"></div>
+
+      <div style="background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6" id="intakeInstructions"></div>
+
+      <div class="auth-form" style="gap:16px">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="intakeName" placeholder="e.g. Amara Nkosi" autocomplete="off"/>
+        </div>
+        <div class="form-group">
+          <label>Student ID / Index Number</label>
+          <input type="text" id="intakeId" placeholder="e.g. STU-2024-001" autocomplete="off"/>
+        </div>
+        <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--yellow)">
+          ⚠ The timer starts immediately. Read instructions before clicking Start.
+        </div>
+        <button class="btn btn-primary btn-lg w-full" id="intakeStartBtn" onclick="beginExam()">
+          Start Exam →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       SCREEN 2: Not Found
+  ══════════════════════════════ -->
+  <div id="screenNotFound" class="notfound-page hidden">
+    <div style="font-size:64px;margin-bottom:20px">🔍</div>
+    <h2 style="font-size:24px;font-weight:900;margin-bottom:10px">Test Not Found</h2>
+    <p style="color:var(--text2);margin-bottom:24px;max-width:380px;line-height:1.6">
+      This link is invalid or the test has been deleted. Please ask your teacher for a valid link.
+    </p>
+    <button class="btn btn-secondary" onclick="window.location.href='index.html'">← Go Home</button>
+  </div>
+
+  <!-- ══════════════════════════════
+       SCREEN 3: Actual Exam
+  ══════════════════════════════ -->
+  <div id="screenExam" class="hidden" style="display:none;flex-direction:column;min-height:100vh">
+
+    <!-- Blocked overlay -->
+    <div id="blockedOverlay" class="exam-blocked hidden">
+      <div class="blocked-icon">🚫</div>
+      <div class="blocked-title">Exam Terminated</div>
+      <div class="blocked-msg" id="blockedMsg">You have been automatically blocked due to multiple cheating violations.</div>
+    </div>
+
+    <!-- Cheat warning overlay -->
+    <div id="cheatWarning" class="cheat-warning hidden">
+      <div class="cheat-box">
+        <div class="cheat-icon" id="cheatIcon">⚠️</div>
+        <div class="cheat-title">Warning!</div>
+        <div class="cheat-msg" id="cheatMsg">You have left the exam window.</div>
+        <div class="cheat-count" id="cheatCount"></div>
+        <button class="btn btn-primary" onclick="dismissCheatWarning()">Return to Exam</button>
+      </div>
+    </div>
+
+    <header class="exam-header">
+      <div class="exam-info">
+        <div class="logo-mark small">IA</div>
+        <div>
+          <div id="examTitle" class="exam-title-text">Assessment</div>
+          <div id="examStudent" class="exam-student-text">Student</div>
+        </div>
+      </div>
+      <div class="exam-controls">
+        <div class="progress-wrap">
+          <span class="progress-text" id="progressText">0 / 0</span>
+          <div class="progress-bar"><div id="progressFill" class="progress-fill" style="width:0%"></div></div>
+        </div>
+        <div id="timer" class="timer">00:00</div>
+        <div id="cheatBadge" style="font-size:11px;font-weight:800;color:var(--yellow);background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);padding:4px 10px;border-radius:5px;display:none">
+          ⚠ Violations: <span id="violationCount">0</span>
+        </div>
+        <button class="btn btn-submit" onclick="confirmSubmit()">Submit</button>
+      </div>
+    </header>
+
+    <div class="exam-layout" style="flex:1">
+      <aside class="q-nav" id="qNav"></aside>
+      <main class="exam-main" id="examMain">
+        <div id="instructions" class="instructions-box hidden"></div>
+        <div id="questionsContainer"></div>
+      </main>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+  // ══════════════════════════════════════════════════
+  //   STEP 1 — Short URL: exam.html?t=TESTID
+  //   Test loaded from: localStorage → Firestore
+  // ══════════════════════════════════════════════════
+  const urlParams = new URLSearchParams(location.search);
+  // Support ?t= (short/new) and ?test= (legacy)
+  const testId = urlParams.get('t') || urlParams.get('test') || IA.sg('testId');
+  if (testId) IA.ss('testId', testId);
+
+  let test = null;
+
+  // 1. Same device — check admin's localStorage directly
+  if (testId) {
+    test = IA.getTests().find(t => t.id === testId) || null;
+  }
+  // 2. Same browser, different tab
+  if (!test && testId) {
+    test = IA.getPublishedTest(testId);
+  }
+
+  // 3. Firestore — loads on ANY device with just the short link
+  async function loadFromFirestore() {
+    showCloudLoader('Loading exam…');
+    // Retry up to 6 times waiting for Firebase to initialize
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        await new Promise(r => setTimeout(r, 1000));
+        const db = IA._getFirestore();
+        if (!db) { continue; }
+        const cloud = await IA.fetchTestFromCloud(testId);
+        hideCloudLoader();
+        if (cloud && cloud.questions) {
+          test = cloud;
+          localStorage.setItem('ia_pub_' + test.id, JSON.stringify(test));
+          if (test.ownerId) {
+            IA.ss('testOwnerId', test.ownerId);
+            localStorage.setItem('ia_testOwnerId_' + test.id, test.ownerId);
+          }
+          routeTest();
+          return;
+        } else {
+          // Got a response but no test — truly not found
+          hideCloudLoader();
+          document.getElementById('screenNotFound').classList.remove('hidden');
+          return;
+        }
+      } catch(e) {
+        console.warn('Load attempt', attempt + 1, 'failed:', e.message);
+      }
+    }
+    hideCloudLoader();
+    document.getElementById('screenNotFound').classList.remove('hidden');
+  }
+
+  function showCloudLoader(msg) {
+    if (document.getElementById('cloudLoader')) return;
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="cloudLoader" style="position:fixed;inset:0;background:var(--bg);z-index:9999;
+           display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+        <div style="font-size:44px">📡</div>
+        <div style="font-size:15px;font-weight:700">${msg}</div>
+        <div style="display:flex;gap:8px">
+          <div style="width:9px;height:9px;border-radius:50%;background:var(--accent);animation:dotPulse 1.2s ease-in-out infinite"></div>
+          <div style="width:9px;height:9px;border-radius:50%;background:var(--accent);animation:dotPulse 1.2s ease-in-out 0.2s infinite"></div>
+          <div style="width:9px;height:9px;border-radius:50%;background:var(--accent);animation:dotPulse 1.2s ease-in-out 0.4s infinite"></div>
+        </div>
+        <style>@keyframes dotPulse{0%,80%,100%{transform:scale(0.7);opacity:.4}40%{transform:scale(1);opacity:1}}</style>
+      </div>`);
+  }
+  function hideCloudLoader() {
+    const el = document.getElementById('cloudLoader');
+    if (el) el.remove();
+  }
+
+  if (test && test.ownerId) {
+    IA.ss('testOwnerId', test.ownerId);
+    localStorage.setItem('ia_testOwnerId_' + test.id, test.ownerId);
+  }
+
+  // ══════════════════════════════════════════════════
+  //   STEP 2 — Route
+  // ══════════════════════════════════════════════════
+  if (test) {
+    routeTest();
+  } else if (testId) {
+    // Try Firestore once DOM + Firebase ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadFromFirestore);
+    } else {
+      loadFromFirestore();
+    }
+  } else {
+    document.getElementById('screenNotFound').classList.remove('hidden');
+  }
+
+  function routeTest() {
+    const now = new Date();
+    if (test.scheduleStart && new Date(test.scheduleStart) > now) {
+      showScheduleError('This exam has not started yet. It opens on ' + IA.fmtDate(test.scheduleStart));
+    } else if (test.scheduleEnd && new Date(test.scheduleEnd) < now) {
+      showScheduleError('This exam has ended. It closed on ' + IA.fmtDate(test.scheduleEnd));
+    } else {
+      const student = IA.sg('student_' + (test.id || testId));
+      if (!student) {
+        showIntake();
+      } else {
+        startExam(student);
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════
+  //   HELPER: show/hide screens
+  // ══════════════════════════════════════════════════
+  function show(id) {
+    ['screenIntake','screenNotFound','screenExam'].forEach(s => {
+      const el = document.getElementById(s);
+      if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
+    });
+    const target = document.getElementById(id);
+    if (target) {
+      target.classList.remove('hidden');
+      target.style.display = id === 'screenExam' ? 'flex' : '';
+    }
+  }
+
+  function showScheduleError(msg) {
+    document.body.innerHTML += `
+      <div class="notfound-page" style="position:fixed;inset:0;background:var(--bg);z-index:999">
+        <div style="font-size:56px;margin-bottom:20px">🕐</div>
+        <h2 style="font-size:22px;font-weight:900;margin-bottom:10px">Not Available</h2>
+        <p style="color:var(--text2);max-width:380px;line-height:1.6">${msg}</p>
+      </div>`;
+  }
+
+  // ══════════════════════════════════════════════════
+  //   SCREEN 1b: Import-code entry (cross-device)
+  //   Shown when test not found in local storage
+  // ══════════════════════════════════════════════════
+  function showIntakeWithImport() {
+    show('screenIntake');
+    document.getElementById('intakeBadge').textContent = '🔗 Enter Access Code';
+    document.getElementById('intakeTitle').textContent = 'Access Your Exam';
+    document.getElementById('intakeMeta').innerHTML =
+      '<span class="badge badge-accent">Enter the code your teacher shared with you</span>';
+    document.getElementById('intakeInstructions').textContent =
+      '📋 Your teacher should share an Access Code along with this link. Paste it below to load your exam.';
+
+    // Replace the form with an import-code field
+    const form = document.querySelector('#screenIntake .auth-form');
+    form.innerHTML = `
+      <div class="form-group">
+        <label>Access Code (from your teacher)</label>
+        <textarea id="importCodeInput" rows="4"
+          placeholder="Paste the access code here…"
+          style="font-family:var(--mono);font-size:12px;resize:vertical;word-break:break-all"></textarea>
+      </div>
+      <div style="background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--text2);">
+        💡 Ask your teacher for the access code — they can copy it from the <strong>Share Link</strong> section in their admin panel.
+      </div>
+      <button class="btn btn-primary btn-lg w-full" onclick="loadFromImportCode()">Load Exam →</button>
+    `;
+  }
+
+  function loadFromImportCode() {
+    const code = (document.getElementById('importCodeInput')?.value || '').trim();
+    if (!code) { IA.toast('Please paste the access code first','error'); return; }
+    const decoded = IA.decodeImportCode(code);
+    if (!decoded || !decoded.questions) {
+      IA.toast('Invalid access code — check with your teacher','error');
+      return;
+    }
+    // Register the decoded test and proceed
+    test = decoded;
+    const storedTests = IA.getTests();
+    if (!storedTests.find(t => t.id === test.id)) {
+      storedTests.push(test);
+      IA.saveTests(storedTests);
+    }
+    IA.publishTest(test.id);
+    routeTest();
+  }
+
+  // ══════════════════════════════════════════════════
+  //   SCREEN 1: Intake form population & submission
+  // ══════════════════════════════════════════════════
+  function showIntake() {
+    show('screenIntake');
+
+    document.getElementById('intakeTitle').textContent  = test.title;
+    document.getElementById('intakeBadge').textContent  = '📋 ' + test.title;
+
+    const metaEl = document.getElementById('intakeMeta');
+    metaEl.innerHTML = `
+      <span class="badge badge-accent">${test.questions.length} Question${test.questions.length !== 1 ? 's' : ''}</span>
+      <span class="badge badge-accent">⏱ ${test.duration} minutes</span>
+      <span class="badge badge-accent">Pass: ${test.passMark}%</span>
+      ${test.antiCheat !== false ? '<span class="badge badge-red">🛡 Anti-Cheat ON</span>' : ''}
+    `;
+
+    const instrEl = document.getElementById('intakeInstructions');
+    if (test.instructions) {
+      instrEl.textContent = '📋 ' + test.instructions;
+    } else {
+      instrEl.textContent = '📋 Read each question carefully. Once started, the timer cannot be paused. Do not switch tabs or exit fullscreen.';
+    }
+
+    // Enter key support
+    document.getElementById('intakeName').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('intakeId').focus(); });
+    document.getElementById('intakeId').addEventListener('keydown',   e => { if (e.key === 'Enter') beginExam(); });
+  }
+
+  function beginExam() {
+    const name = document.getElementById('intakeName').value.trim();
+    const id   = document.getElementById('intakeId').value.trim();
+
+    if (!name) {
+      document.getElementById('intakeName').focus();
+      document.getElementById('intakeName').style.borderColor = 'var(--red)';
+      setTimeout(() => document.getElementById('intakeName').style.borderColor = '', 1500);
+      return;
+    }
+    if (!id) {
+      document.getElementById('intakeId').focus();
+      document.getElementById('intakeId').style.borderColor = 'var(--red)';
+      setTimeout(() => document.getElementById('intakeId').style.borderColor = '', 1500);
+      return;
+    }
+
+    const student = { name, id };
+
+    // Store keyed by testId so reloads don't bleed across tests
+    IA.ss('student_' + testId, student);
+    IA.ss('testId', testId);
+
+    // Disable button to prevent double-click
+    const btn = document.getElementById('intakeStartBtn');
+    btn.disabled = true;
+    btn.textContent = 'Starting…';
+
+    startExam(student);
+  }
+
+  // ══════════════════════════════════════════════════
+  //   SCREEN 3: Exam engine
+  // ══════════════════════════════════════════════════
+  function startExam(student) {
+    show('screenExam');
+
+    // ── Shuffle questions ──
+    const shuffledQIndices = test.mixQuestions
+      ? IA.shuffle(test.questions.map((_,i) => i))
+      : test.questions.map((_,i) => i);
+
+    // ── Build display question list with shuffled options ──
+    const displayQuestions = shuffledQIndices.map(origIdx => {
+      const q = JSON.parse(JSON.stringify(test.questions[origIdx]));
+      q.origIdx = origIdx;
+
+      if (q.type === 'mcq' && test.mixOptions && q.options && q.options.length > 1) {
+        // Shuffle order of options; keep index mapping so grading stays correct
+        const origLen    = q.options.length;
+        const optIndices = IA.shuffle(Array.from({length: origLen}, (_, i) => i));
+        q._optMap        = optIndices;          // display pos → original idx
+        q._revMap        = {};
+        optIndices.forEach((origI, dispPos) => { q._revMap[origI] = dispPos; });
+        q.displayOptions = optIndices.map(i => q.options[i]);
+        q.displayCorrect = (q.correct !== undefined && q.correct >= 0) ? q._revMap[parseInt(q.correct)] : -1;
+      }
+      return q;
+    });
+
+    // ── State ──
+    const answers       = {};
+    let   timerInterval = null;
+    let   secondsLeft   = test.duration * 60;
+    let   violations    = 0;
+    const maxViolations = test.maxViolations || 3;
+    const antiCheat     = test.antiCheat !== false;
+    let   examLive      = true;
+
+    // ── DOM header ──
+    document.getElementById('examTitle').textContent   = test.title;
+    document.getElementById('examStudent').textContent = student.name + ' · ' + student.id;
+    if (test.instructions) {
+      const ib = document.getElementById('instructions');
+      ib.textContent = '📋 ' + test.instructions;
+      ib.classList.remove('hidden');
+    }
+
+    // ── Render all questions ──
+    const container = document.getElementById('questionsContainer');
+    const nav       = document.getElementById('qNav');
+    container.innerHTML = '';
+    nav.innerHTML = '<div class="nav-label">Qs</div>';
+
+    displayQuestions.forEach((q, di) => {
+      // Sidebar nav button
+      const nb = document.createElement('button');
+      nb.className = 'q-nav-btn';
+      nb.id        = 'nav_' + di;
+      nb.textContent = di + 1;
+      nb.onclick   = () => document.getElementById('q_' + di)
+                              .scrollIntoView({ behavior:'smooth', block:'start' });
+      nav.appendChild(nb);
+
+      // Question card
+      const card = document.createElement('div');
+      card.className = 'exam-q-card';
+      card.id        = 'q_' + di;
+
+      let optHTML = '';
+      if (q.type === 'mcq') {
+        const opts = q.displayOptions || q.options || [];
+        optHTML = opts.map((opt, oi) => `
+          <div class="exam-option" id="opt_${di}_${oi}" onclick="selectOpt(${di},${oi},this)">
+            <span class="opt-circle">${['A','B','C','D'][oi]}</span>
+            <span style="flex:1">${opt || '(empty)'}</span>
+          </div>`).join('');
+      } else if (q.type === 'truefalse') {
+        optHTML = `
+          <div class="exam-option" id="opt_${di}_true"  onclick="selectOpt(${di},'true',this)">
+            <span class="opt-circle">T</span><span>True</span>
+          </div>
+          <div class="exam-option" id="opt_${di}_false" onclick="selectOpt(${di},'false',this)">
+            <span class="opt-circle">F</span><span>False</span>
+          </div>`;
+      } else {
+        optHTML = `
+          <textarea class="exam-short-input" id="short_${di}" rows="6"
+            placeholder="Type your answer here…"
+            oninput="recordShort(${di},this.value)"></textarea>`;
+      }
+
+      const typeLabel = { mcq:'Multiple Choice', truefalse:'True / False', short:'Short Answer' }[q.type] || q.type;
+      card.innerHTML = `
+        <div class="q-header-row">
+          <span class="q-num-badge">Q${di+1}</span>
+          <span class="q-type-tag">${typeLabel}</span>
+          <span class="q-pts">${q.points} pt${q.points > 1 ? 's' : ''}</span>
+        </div>
+        ${q.image ? `<img src="${q.image}" class="q-img" alt="question image"/>` : ''}
+        <div class="q-text-body">${q.text || '(no question text)'}</div>
+        <div class="options-wrap">${optHTML}</div>
+      `;
+      container.appendChild(card);
+    });
+
+    updateProgress();
+    if (window.MathJax) MathJax.typesetPromise([container]);
+
+    // ── Option selection ──
+    window.selectOpt = function(di, val, el) {
+      answers[di] = val;
+      document.getElementById('q_' + di).querySelectorAll('.exam-option')
+        .forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('nav_' + di).classList.add('answered');
+      updateProgress();
+    };
+
+    window.recordShort = function(di, val) {
+      answers[di] = val.trim();
+      document.getElementById('nav_' + di).classList.toggle('answered', val.trim().length > 0);
+      updateProgress();
+    };
+
+    function updateProgress() {
+      const answered = Object.keys(answers).filter(k => answers[k] !== null && answers[k] !== undefined && answers[k] !== '').length;
+      const total    = displayQuestions.length;
+      document.getElementById('progressText').textContent = answered + ' / ' + total;
+      document.getElementById('progressFill').style.width = (total ? (answered/total)*100 : 0) + '%';
+    }
+
+    // ── Timer ──
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (!examLive) { clearInterval(timerInterval); return; }
+        secondsLeft--;
+        const m  = Math.floor(secondsLeft / 60).toString().padStart(2,'0');
+        const s  = (secondsLeft % 60).toString().padStart(2,'0');
+        const el = document.getElementById('timer');
+        el.textContent = m + ':' + s;
+        if (secondsLeft <= 60)  el.classList.add('warning');
+        if (secondsLeft <= 10)  el.classList.add('danger');
+        if (secondsLeft <= 0)   { clearInterval(timerInterval); submitExam(false, 'timeout'); }
+      }, 1000);
+    }
+    startTimer();
+
+    // ── Fullscreen ──
+    function tryFullscreen() {
+      const el = document.documentElement;
+      if (el.requestFullscreen)       el.requestFullscreen().catch(()=>{});
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else if (el.mozRequestFullScreen)    el.mozRequestFullScreen();
+    }
+    setTimeout(tryFullscreen, 600);
+
+    // ── Anti-Cheat ──
+    function registerViolation(reason) {
+      if (!antiCheat || !examLive) return;
+      violations++;
+      const badge = document.getElementById('cheatBadge');
+      badge.style.display = '';
+      document.getElementById('violationCount').textContent = violations;
+
+      if (violations >= maxViolations) { blockStudent(); return; }
+
+      const remaining = maxViolations - violations;
+      document.getElementById('cheatIcon').textContent  = violations >= maxViolations - 1 ? '🚨' : '⚠️';
+      document.getElementById('cheatMsg').textContent   = reason;
+      document.getElementById('cheatCount').textContent =
+        'Warning ' + violations + ' of ' + maxViolations + '. ' +
+        remaining + ' violation' + (remaining !== 1 ? 's' : '') + ' left before automatic block.';
+      document.getElementById('cheatWarning').classList.remove('hidden');
+      clearInterval(timerInterval); // pause during warning
+    }
+
+    window.dismissCheatWarning = function() {
+      document.getElementById('cheatWarning').classList.add('hidden');
+      startTimer();
+      tryFullscreen();
+    };
+
+    function blockStudent() {
+      examLive = false;
+      clearInterval(timerInterval);
+      document.getElementById('cheatWarning').classList.add('hidden');
+      document.getElementById('blockedMsg').textContent =
+        'You received ' + violations + ' cheating violations (max: ' + maxViolations + '). ' +
+        'Your exam has been automatically submitted with your current answers.';
+      document.getElementById('blockedOverlay').classList.remove('hidden');
+      setTimeout(() => submitExam(true), 3000);
+    }
+
+    // Tab switch
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && examLive) registerViolation('You switched to another tab or minimized the window.');
+    });
+
+    // Window blur (with debounce to avoid false triggers on fullscreen request)
+    let blurTimer;
+    window.addEventListener('blur', () => {
+      if (!antiCheat || !examLive) return;
+      blurTimer = setTimeout(() => {
+        if (!document.hasFocus() && examLive)
+          registerViolation('You left the exam window. Keep this tab active at all times.');
+      }, 800);
+    });
+    window.addEventListener('focus', () => clearTimeout(blurTimer));
+
+    // Fullscreen exit
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && antiCheat && examLive)
+        registerViolation('You exited fullscreen. The exam must run in fullscreen.');
+    });
+
+    // Right-click & keyboard shortcuts
+    document.addEventListener('contextmenu', e => { if (antiCheat) e.preventDefault(); });
+    document.addEventListener('copy',  e => { if (antiCheat) e.preventDefault(); });
+    document.addEventListener('paste', e => { if (antiCheat) e.preventDefault(); });
+    document.addEventListener('keydown', e => {
+      if (!antiCheat) return;
+      if ((e.ctrlKey && ['c','v','u','a','s','p'].includes(e.key.toLowerCase())) ||
+          e.key === 'F12' || (e.ctrlKey && e.shiftKey && 'iIjJ'.includes(e.key))) {
+        e.preventDefault();
+        registerViolation('Keyboard shortcut blocked during exam.');
+      }
+    });
+
+    // ── Submit ──
+    window.confirmSubmit = function() {
+      const answered   = Object.keys(answers).filter(k => answers[k] !== null && answers[k] !== undefined && answers[k] !== '').length;
+      const unanswered = displayQuestions.length - answered;
+      if (unanswered > 0) {
+        if (!confirm('You have ' + unanswered + ' unanswered question(s). Submit anyway?')) return;
+      } else {
+        if (!confirm('Are you sure you want to submit your exam?')) return;
+      }
+      submitExam(false);
+    };
+
+    async function submitExam(blocked, reason) {
+      if (!examLive && !blocked) return; // prevent double submit
+      examLive = false;
+      clearInterval(timerInterval);
+
+      // ── Grade ──
+      let scored = 0, total = 0;
+      const details = displayQuestions.map((q, di) => {
+        total += q.points;
+        const userAns = answers[di];
+        let correct = false, correctDisplay = '';
+
+        if (q.type === 'mcq') {
+          // Map displayed option index back to original index
+          const origAnswered = (userAns !== undefined && userAns !== null && q._optMap)
+            ? q._optMap[parseInt(userAns)]
+            : parseInt(userAns);
+          correct        = origAnswered === parseInt(q.correct);
+          correctDisplay = (q.options && q.options[q.correct]) || '';
+        } else if (q.type === 'truefalse') {
+          correct        = String(userAns) === String(q.correct);
+          correctDisplay = String(q.correct);
+        } else {
+          const accepted = (q.answer || '').split(',').map(a => a.trim().toLowerCase()).filter(Boolean);
+          correct        = accepted.length > 0 && accepted.includes((userAns || '').toLowerCase().trim());
+          correctDisplay = q.answer || '';
+        }
+
+        if (correct) scored += q.points;
+
+        let userDisplay = '';
+        if (q.type === 'mcq' && userAns !== undefined && userAns !== null) {
+          const opts  = q.displayOptions || q.options || [];
+          userDisplay = opts[parseInt(userAns)] || '(no answer)';
+        } else {
+          userDisplay = userAns || '(no answer)';
+        }
+
+        return {
+          question: q.text, type: q.type, origIdx: q.origIdx,
+          userAns: userDisplay, correctDisplay,
+          correct, points: q.points, scored: correct ? q.points : 0
+        };
+      });
+
+      const percent = total > 0 ? Math.round((scored / total) * 100) : 0;
+      // Guarantee adminId is always set — fall back to URL param or stored id
+      const resolvedAdminId = test.ownerId ||
+        localStorage.getItem('ia_testOwnerId_' + (test.id || testId)) ||
+        urlParams.get('owner') ||
+        IA.sg('testOwnerId') ||
+        'shared';
+
+      const result  = {
+        id: 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+        student, testId: test.id, testTitle: test.title,
+        adminId: resolvedAdminId,
+        date: new Date().toISOString(),
+        scored, total, percent,
+        passed: percent >= (test.passMark || 50),
+        details, timeTaken: (test.duration * 60) - secondsLeft,
+        cheatingFlags: violations, autoBlocked: blocked,
+        showAnswers: test.showAnswers
+      };
+
+      // ── 1. Save locally (instant for same-device admin) ──
+      const results = IA.getResults();
+      results.push(result);
+      IA.saveResults(results);
+
+      // ── 2. Save to Firestore — WAIT for save before navigating ──
+      // Show saving indicator
+      const savingDiv = document.createElement('div');
+      savingDiv.id = 'savingIndicator';
+      savingDiv.style.cssText = 'position:fixed;inset:0;background:var(--bg,#0f172a);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
+      savingDiv.innerHTML = '<div style="font-size:48px">💾</div><div style="font-size:18px;font-weight:700;color:#fff">Saving your results...</div><div style="font-size:14px;color:#94a3b8">Please wait a moment</div>';
+      document.body.appendChild(savingDiv);
+
+      // Try to save to Firestore with retries
+      let saved = false;
+      for (let attempt = 0; attempt < 8; attempt++) {
+        try {
+          await new Promise(r => setTimeout(r, 1000));
+          const db = IA._getFirestore();
+          if (db) {
+            const ok = await IA.saveResultToCloud(result);
+            if (ok) { saved = true; break; }
+          }
+        } catch(e) { console.warn('Save attempt', attempt+1, 'failed:', e.message); }
+      }
+
+      if (!saved) {
+        savingDiv.innerHTML = '<div style="font-size:48px">⚠️</div><div style="font-size:18px;font-weight:700;color:#fff">Saved locally</div><div style="font-size:14px;color:#94a3b8">Cloud sync will retry automatically</div>';
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      // ── Store result for result.html ──
+      IA.ss('lastResult', result);
+
+      // ── Navigate to result page ──
+      try {
+        const enc = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
+        try { if (document.exitFullscreen) document.exitFullscreen(); } catch(_) {}
+        window.location.href = 'result.html?r=' + encodeURIComponent(enc);
+        return;
+      } catch(_) {}
+
+      try { if (document.exitFullscreen) document.exitFullscreen(); } catch(_) {}
+      window.location.href = 'result.html';
+    }
+  }
+  </script>
+</body>
+</html>

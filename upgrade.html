@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Upgrade Plan — Best Assessment</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .upgrade-main { position:relative;z-index:1;padding:40px 32px;max-width:1060px;margin:0 auto; }
+    .upgrade-hero { text-align:center;margin-bottom:48px; }
+    .upgrade-hero h1 { font-size:36px;font-weight:900;margin-bottom:12px; }
+    .upgrade-hero h1 span { background:linear-gradient(135deg,var(--accent),var(--purple),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
+    .upgrade-hero p { font-size:15px;color:var(--text2); }
+    .plan-feature { display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:8px; }
+    .plan-feature .check { color:var(--green);font-weight:800;font-size:15px; }
+    .current-plan-badge { display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:rgba(79,142,247,0.1);border:1px solid rgba(79,142,247,0.2);font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:24px; }
+
+    /* Payment modal overlay */
+    .pay-overlay {
+      display:none;position:fixed;inset:0;z-index:9999;
+      background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);
+      align-items:center;justify-content:center;padding:20px;
+    }
+    .pay-overlay.open { display:flex; }
+    .pay-modal {
+      background:var(--surface);border:1px solid var(--border2);
+      border-radius:var(--radius-lg);width:100%;max-width:520px;
+      max-height:90vh;overflow-y:auto;position:relative;
+      animation:authFadeIn 0.3s ease;
+    }
+    .pay-modal-header {
+      padding:24px 28px 0;display:flex;align-items:center;justify-content:space-between;
+    }
+    .pay-modal-body { padding:20px 28px 28px; }
+    .pay-close {
+      background:none;border:none;color:var(--text2);font-size:20px;
+      cursor:pointer;padding:4px;line-height:1;
+    }
+    .pay-close:hover { color:var(--text); }
+
+    /* MoMo instruction card */
+    .momo-card {
+      background:linear-gradient(135deg,rgba(34,197,94,0.07),rgba(6,182,212,0.07));
+      border:2px solid rgba(34,197,94,0.3);border-radius:var(--radius);
+      padding:20px;margin:16px 0;
+    }
+    .momo-header { display:flex;align-items:center;gap:12px;margin-bottom:14px; }
+    .momo-icon { font-size:36px; }
+    .momo-title { font-size:15px;font-weight:800;color:var(--text); }
+    .momo-sub   { font-size:12px;color:var(--text2);margin-top:2px; }
+    .momo-row   { display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px; }
+    .momo-row:last-child { border-bottom:none; }
+    .momo-row .lbl { color:var(--text2); }
+    .momo-row .val { font-weight:700;color:var(--text);font-family:var(--mono); }
+    .momo-row .val.green { color:var(--green);font-size:17px; }
+    .momo-row .val.big   { font-size:18px;color:var(--accent2); }
+    .ref-badge {
+      display:inline-block;background:rgba(79,142,247,0.12);
+      border:1px solid rgba(79,142,247,0.3);border-radius:8px;
+      padding:6px 14px;font-family:var(--mono);font-size:15px;
+      font-weight:900;color:var(--accent2);letter-spacing:2px;margin:4px 0;
+    }
+    .step-list { list-style:none;padding:0;margin:12px 0 0;display:flex;flex-direction:column;gap:10px; }
+    .step-list li { display:flex;gap:12px;align-items:flex-start;font-size:13px;color:var(--text2);line-height:1.5; }
+    .step-num { min-width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center; }
+    .pay-warn { background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.25);border-radius:var(--radius-sm);padding:12px 16px;font-size:12px;color:var(--yellow);line-height:1.6;margin:14px 0; }
+    .pending-banner {
+      background:rgba(245,158,11,0.07);border:2px solid rgba(245,158,11,0.3);
+      border-radius:var(--radius);padding:20px 24px;margin-top:32px;
+      display:none;
+    }
+    .pending-banner h3 { font-size:16px;font-weight:800;margin-bottom:8px;color:var(--yellow); }
+    .pending-banner p { font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px; }
+    .pending-ref { font-family:var(--mono);font-size:20px;font-weight:900;color:var(--accent2);letter-spacing:3px;margin:8px 0; }
+    @keyframes authFadeIn { from{opacity:0;transform:translateY(20px) scale(0.97)} to{opacity:1;transform:none} }
+    .momo-dot {
+      width:10px;height:10px;border-radius:50%;
+      background:var(--accent);animation:momoPulse 1.2s ease-in-out infinite;
+    }
+    .momo-dot:nth-child(2){animation-delay:0.2s}
+    .momo-dot:nth-child(3){animation-delay:0.4s}
+    @keyframes momoPulse {
+      0%,80%,100%{transform:scale(0.7);opacity:0.4}
+      40%{transform:scale(1);opacity:1}
+    }
+  </style>
+</head>
+<body class="admin-page">
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+  <header class="site-header"></header>
+
+  <main class="upgrade-main">
+    <div class="upgrade-hero">
+      <div class="portal-badge" style="display:inline-flex;margin-bottom:16px">⭐ UPGRADE YOUR PLAN</div>
+      <h1>Unlock More <span>Tests &amp; Features</span></h1>
+      <p>Choose the plan that fits your teaching needs</p>
+      <div id="currentPlanInfo" class="current-plan-badge"></div>
+    </div>
+
+    <!-- Plans Grid -->
+    <div class="plans-grid" id="plansGrid">
+      <!-- Free -->
+      <div class="plan-card" id="pc-free">
+        <div class="plan-name">Free</div>
+        <div class="plan-price">0 <span>RWF/mo</span></div>
+        <div class="plan-tests"><strong>5</strong> tests total</div>
+        <div class="plan-tests" style="font-size:13px;color:var(--text2)">📚 <strong>4</strong> lesson plans</div>
+        <div class="plan-feature"><span class="check">✓</span> Auto grading</div>
+        <div class="plan-feature"><span class="check">✓</span> Share links (all devices)</div>
+        <div class="plan-feature"><span class="check">✓</span> Anti-cheat</div>
+        <div class="plan-feature" style="color:var(--text3)">✗ Excel export</div>
+        <div class="plan-feature" style="color:var(--text3)">✗ Scheduled tests</div>
+        <button class="btn btn-secondary w-full" style="margin-top:16px" disabled>Free Plan</button>
+      </div>
+
+      <!-- Basic -->
+      <div class="plan-card popular" id="pc-basic">
+        <div class="plan-name">Basic</div>
+        <div class="plan-price">2,500 <span>RWF/mo</span></div>
+        <div class="plan-tests"><strong>20</strong> tests/month</div>
+        <div class="plan-tests" style="font-size:13px;color:var(--text2)">📚 <strong>60</strong> lesson plans/month</div>
+        <div class="plan-feature"><span class="check">✓</span> Everything in Free</div>
+        <div class="plan-feature"><span class="check">✓</span> Excel export</div>
+        <div class="plan-feature"><span class="check">✓</span> Scheduled tests</div>
+        <div class="plan-feature"><span class="check">✓</span> Image in questions</div>
+        <div class="plan-feature" style="color:var(--text3)">✗ Equation editor</div>
+        <button class="btn btn-primary w-full" style="margin-top:16px" onclick="openPayModal('basic')">Choose Basic →</button>
+      </div>
+
+      <!-- Basic Plus -->
+      <div class="plan-card" id="pc-plus">
+        <div class="plan-name">Basic Plus</div>
+        <div class="plan-price">3,500 <span>RWF/mo</span></div>
+        <div class="plan-tests"><strong>45</strong> tests/month</div>
+        <div class="plan-tests" style="font-size:13px;color:var(--text2)">📚 <strong>100</strong> lesson plans/month</div>
+        <div class="plan-feature"><span class="check">✓</span> Everything in Basic</div>
+        <div class="plan-feature"><span class="check">✓</span> Equation editor</div>
+        <div class="plan-feature"><span class="check">✓</span> Priority support</div>
+        <div class="plan-feature" style="color:var(--text3)">✗ Unlimited tests</div>
+        <button class="btn btn-primary w-full" style="margin-top:16px" onclick="openPayModal('plus')">Choose Plus →</button>
+      </div>
+
+      <!-- Pro -->
+      <div class="plan-card" id="pc-pro">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">5,000 <span>RWF/mo</span></div>
+        <div class="plan-tests"><strong>Unlimited</strong> tests</div>
+        <div class="plan-tests" style="font-size:13px;color:var(--text2)">📚 <strong>Unlimited</strong> lesson plans</div>
+        <div class="plan-feature"><span class="check">✓</span> Everything in Plus</div>
+        <div class="plan-feature"><span class="check">✓</span> Unlimited tests</div>
+        <div class="plan-feature"><span class="check">✓</span> Advanced analytics</div>
+        <div class="plan-feature"><span class="check">✓</span> White-label option</div>
+        <button class="btn btn-primary w-full" style="margin-top:16px;background:linear-gradient(135deg,var(--purple),var(--pink))" onclick="openPayModal('pro')">Choose Pro →</button>
+      </div>
+    </div>
+
+    <!-- pending banner removed: payments now auto-verified via MTN MoMo API -->
+    <div id="pendingBanner" style="display:none"></div>
+  </main>
+
+  <!-- ══════════════════════════════
+       PAYMENT MODAL
+  ══════════════════════════════ -->
+  <div class="pay-overlay" id="payOverlay" onclick="overlayClick(event)">
+    <div class="pay-modal" id="payModal">
+      <div class="pay-modal-header">
+        <div>
+          <div style="font-size:18px;font-weight:900" id="modalPlanTitle">Complete Payment</div>
+          <div style="font-size:12px;color:var(--text2)" id="modalPlanSub"></div>
+        </div>
+        <button class="pay-close" onclick="closePayModal()">✕</button>
+      </div>
+      <div class="pay-modal-body">
+
+        <!-- Step 1: MoMo Pay Code instructions -->
+        <div id="step1">
+          <div class="momo-card">
+            <div class="momo-header">
+              <div class="momo-icon">📱</div>
+              <div>
+                <div class="momo-title">Pay via MTN MoMo Pay Code</div>
+                <div class="momo-sub">Dial the USSD code below on your MTN phone</div>
+              </div>
+            </div>
+            <div class="momo-row">
+              <span class="lbl">Merchant</span>
+              <span class="val">Best Assessment (Israel H.)</span>
+            </div>
+            <div class="momo-row">
+              <span class="lbl">MoMo Pay Code</span>
+              <span class="val green" style="font-size:22px;letter-spacing:3px;font-weight:900">532681</span>
+            </div>
+            <div class="momo-row">
+              <span class="lbl">Amount to Pay</span>
+              <span class="val big" id="momoAmount">—</span>
+            </div>
+            <div class="momo-row">
+              <span class="lbl">Your Reference Code</span>
+              <span class="val"><span class="ref-badge" id="momoRef">—</span></span>
+            </div>
+          </div>
+
+          <!-- USSD dial shortcut -->
+          <div style="background:rgba(79,142,247,0.07);border:1px solid rgba(79,142,247,0.2);border-radius:var(--radius-sm);padding:14px 16px;margin:14px 0;">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">📲 How to pay (dial on your phone):</div>
+            <ul class="step-list" style="margin:0">
+              <li><span class="step-num">1</span>Dial <strong id="ussdCode">*182*8*1*532681*AMOUNT#</strong> on your MTN phone</li>
+              <li><span class="step-num">2</span>Or open MTN MoMo → <em>Pay Bill / Buy Goods</em> → enter code <strong>532681</strong></li>
+              <li><span class="step-num">3</span>Enter amount: <strong id="stepAmount">—</strong> RWF</li>
+              <li><span class="step-num">4</span>Type your reference <strong id="stepRef">—</strong> in the reason/note field</li>
+              <li><span class="step-num">5</span>Enter your PIN to confirm, then click <em>"I've Paid"</em> below</li>
+            </ul>
+            <a id="ussdDialLink" href="#" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 16px;background:linear-gradient(135deg,#ffcc00,#ff8800);color:#000;font-weight:800;font-size:13px;border-radius:8px;text-decoration:none">
+              📞 Tap to Dial USSD
+            </a>
+          </div>
+
+          <div class="pay-warn">
+            ⚠ Use the exact amount shown. Include your reference code in the payment reason so we can verify instantly.
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-lg" style="flex:1;min-width:160px;background:linear-gradient(135deg,#ffcc00,#ff8800);color:#000;font-weight:900" id="iHavePaidBtn" onclick="goToVerify()">✅ I've Paid — Verify Now →</button>
+            <button class="btn btn-secondary" onclick="closePayModal()">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Enter Transaction ID + activation code -->
+        <div id="step2" style="display:none">
+          <div style="text-align:center;margin-bottom:20px">
+            <div style="font-size:44px;margin-bottom:10px">🔑</div>
+            <div style="font-size:16px;font-weight:900;margin-bottom:6px">Confirm Your Payment</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.6">
+              Pay <strong id="step2Amount"></strong> RWF to MoMo <strong>+250 780 467 662</strong> (Israel HASHIMWIMANA).<br/>
+              After payment, enter your Transaction ID and the activation code sent to you.
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px">
+            <label>MoMo Transaction ID</label>
+            <input type="text" id="momoTxId" placeholder="e.g. 1234567890" style="font-size:16px;letter-spacing:2px;font-family:monospace" maxlength="20"/>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px">Found in your MoMo SMS confirmation message</div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:16px">
+            <label>Activation Code</label>
+            <input type="text" id="activationCode" placeholder="e.g. BSC-XXXXXX" style="font-size:18px;letter-spacing:3px;text-transform:uppercase;text-align:center"/>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px">Code sent by admin after payment verification</div>
+          </div>
+
+          <div id="verifyStatus" style="display:none;padding:12px 16px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:13px;text-align:center"></div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn btn-primary btn-lg" style="flex:1;min-width:140px" id="verifyBtn" onclick="verifyPayment()">✅ Activate Plan</button>
+            <button class="btn btn-secondary" onclick="showStep(1)">← Back</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Success — plan activated -->
+        <div id="step3" style="display:none;text-align:center;padding:20px 0">
+          <div style="font-size:56px;margin-bottom:16px">🎉</div>
+          <div style="font-size:20px;font-weight:900;margin-bottom:10px;color:var(--green)">Plan Activated!</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:16px">
+            Your <strong id="confirmPlanName"></strong> plan is now active.<br/>
+            Start creating tests right away!
+          </div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
+            Reference: <span class="ref-badge" style="font-size:13px" id="confirmRef"></span>
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="window.location.href='tests.html'">Start Creating Tests →</button>
+        </div>
+
+        <!-- Step 4: Payment failed -->
+        <div id="step4" style="display:none;text-align:center;padding:20px 0">
+          <div style="font-size:52px;margin-bottom:12px">❌</div>
+          <div style="font-size:17px;font-weight:800;margin-bottom:8px;color:var(--red)" id="failTitle">Payment Not Completed</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:20px" id="failMsg">The payment was cancelled or timed out. Please try again.</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="showStep(1)">Try Again</button>
+            <button class="btn btn-secondary" onclick="closePayModal()">Close</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="nav.js"></script>
+  <script>
+    const user = IA.requireAuth();
+    buildNav('');
+
+    const currentPlan = IA.getUserPlan(user);
+    const planInfo    = IA.plans[currentPlan];
+    const myTests     = IA.getTests().filter(t => t.ownerId === user.id).length;
+    const myPlans     = (IA.get('ba_lessonplans_' + user.id) || []).length;
+    const maxT        = planInfo.tests === Infinity ? '∞' : planInfo.tests;
+    const maxP        = planInfo.lessonPlans === Infinity ? '∞' : planInfo.lessonPlans;
+    const remT        = planInfo.tests === Infinity ? '∞' : Math.max(0, planInfo.tests - myTests);
+    const remP        = planInfo.lessonPlans === Infinity ? '∞' : Math.max(0, planInfo.lessonPlans - myPlans);
+
+    document.getElementById('currentPlanInfo').innerHTML =
+      `📋 <strong>${planInfo.name}</strong> plan
+      &nbsp;·&nbsp; 📝 Tests: <strong>${myTests}/${maxT}</strong> used (<strong>${remT}</strong> remaining)
+      &nbsp;·&nbsp; 📚 Lesson Plans: <strong>${myPlans}/${maxP}</strong> used (<strong>${remP}</strong> remaining)
+      <br><small style="color:var(--text2);font-size:11px">💡 Deleting a test or lesson plan frees up a slot automatically</small>`;
+
+    const planMap = { free:'pc-free', basic:'pc-basic', plus:'pc-plus', pro:'pc-pro' };
+    if (planMap[currentPlan]) {
+      const el = document.getElementById(planMap[currentPlan]);
+      if (el) { el.style.borderColor = 'var(--accent)'; el.style.borderWidth = '2px'; }
+    }
+
+    // ── MTN MoMo Pay Code config ──
+    // Pay Code 532681 belongs to this merchant account.
+    // MTN MoMo Collections API — used to verify incoming payments.
+    // ⚠ In production: move credentials to a backend proxy. Never expose
+    //   subscription keys or API keys in client-side code in a real deployment.
+    //   For this self-contained offline app, we call the MTN sandbox directly.
+    const MOMO_PAY_CODE  = '532681';
+    const MOMO_BASE      = 'https://proxy.cors.sh/https://sandbox.momodeveloper.mtn.com';
+    // REPLACE these with your real MTN MoMo Collections API credentials:
+    const MOMO_SUB_KEY   = 'YOUR_COLLECTIONS_SUBSCRIPTION_KEY'; // from developer.mtn.com
+    const MOMO_API_USER  = 'YOUR_API_USER_UUID';                // created via /v1_0/apiuser
+    const MOMO_API_KEY   = 'YOUR_API_KEY';                      // created via /v1_0/apiuser/{uuid}/apikey
+
+    // ── Modal state ──
+    let _plan = null;
+    let _ref  = null;
+
+    function genRef() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let r = 'BA-';
+      for (let i=0;i<4;i++) r += chars[Math.floor(Math.random()*chars.length)];
+      r += '-';
+      for (let i=0;i<4;i++) r += chars[Math.floor(Math.random()*chars.length)];
+      return r;
+    }
+
+    function openPayModal(plan) {
+      if (currentPlan === plan) { IA.toast('You are already on this plan','warn'); return; }
+
+      _plan = plan;
+      _ref  = genRef();
+
+      const info   = IA.plans[plan];
+      const amtStr = info.price.toLocaleString() + ' RWF';
+      const ussd   = `*182*8*1*${MOMO_PAY_CODE}*${info.price}#`;
+
+      document.getElementById('modalPlanTitle').textContent = info.name + ' Plan';
+      document.getElementById('modalPlanSub').textContent   = amtStr + ' / month';
+      document.getElementById('momoAmount').textContent     = amtStr;
+      document.getElementById('momoRef').textContent        = _ref;
+      document.getElementById('ussdCode').textContent       = ussd;
+      document.getElementById('stepAmount').textContent     = info.price.toLocaleString();
+      document.getElementById('stepRef').textContent        = _ref;
+
+      // Make the "Tap to Dial" link work on mobile
+      const dialLink = document.getElementById('ussdDialLink');
+      dialLink.href = 'tel:' + encodeURIComponent(ussd);
+
+      showStep(1);
+      document.getElementById('payOverlay').classList.add('open');
+    }
+
+    function closePayModal() {
+      document.getElementById('payOverlay').classList.remove('open');
+    }
+
+    function overlayClick(e) {
+      if (e.target === document.getElementById('payOverlay')) closePayModal();
+    }
+
+    function showStep(n) {
+      [1,2,3,4].forEach(i => {
+        const el = document.getElementById('step'+i);
+        if (el) el.style.display = (i === n) ? '' : 'none';
+      });
+    }
+
+    function goToVerify() {
+      showStep(2);
+      const vs = document.getElementById('verifyStatus');
+      if (vs) { vs.style.display = 'none'; vs.textContent = ''; }
+      const vb = document.getElementById('verifyBtn');
+      if (vb) { vb.disabled = false; vb.textContent = '✅ Activate Plan'; }
+      const ac = document.getElementById('activationCode');
+      if (ac) { ac.value = ''; }
+      const amt = document.getElementById('step2Amount');
+      if (amt && _plan) amt.textContent = IA.plans[_plan] ? IA.plans[_plan].price : '';
+    }
+
+    // ── Get MTN MoMo API Bearer Token ──
+    async function getMoMoToken() {
+      const creds = btoa(MOMO_API_USER + ':' + MOMO_API_KEY);
+      const resp = await fetch(MOMO_BASE + '/collection/token/', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + creds,
+          'Ocp-Apim-Subscription-Key': MOMO_SUB_KEY
+        }
+      });
+      if (!resp.ok) throw new Error('Auth failed: ' + resp.status);
+      const data = await resp.json();
+      return data.access_token;
+    }
+
+    async function verifyPayment() {
+      const code  = (document.getElementById('activationCode').value || '').trim().toUpperCase();
+      const txId  = (document.getElementById('momoTxId').value || '').trim();
+      const btn   = document.getElementById('verifyBtn');
+      const vs    = document.getElementById('verifyStatus');
+
+      vs.style.display = 'block';
+
+      if (!txId) {
+        vs.style.background = 'rgba(239,68,68,0.1)'; vs.style.color = 'var(--red)';
+        vs.textContent = '⚠ Please enter your MoMo Transaction ID from your SMS.';
+        return;
+      }
+
+      if (!code) {
+        vs.style.background = 'rgba(239,68,68,0.1)'; vs.style.color = 'var(--red)';
+        vs.textContent = '⚠ Please enter your activation code.';
+        return;
+      }
+
+      vs.style.background = 'rgba(79,142,247,0.1)'; vs.style.color = 'var(--accent)';
+      vs.textContent = '⏳ Verifying code...';
+      btn.disabled = true;
+
+      // Check Firestore for one-time code
+      let db = null;
+      for (let i = 0; i < 8; i++) {
+        await new Promise(r => setTimeout(r, 800));
+        db = IA._getFirestore();
+        if (db) break;
+      }
+
+      if (db) {
+        try {
+          const { doc, getDoc, setDoc } = await IA._firestoreOps();
+          const snap = await getDoc(doc(db, 'codes', code));
+
+          if (!snap.exists()) {
+            vs.style.background = 'rgba(239,68,68,0.1)'; vs.style.color = 'var(--red)';
+            vs.textContent = '❌ Invalid code. Contact admin after payment.';
+            btn.disabled = false; return;
+          }
+
+          const codeData = snap.data();
+
+          if (codeData.used) {
+            vs.style.background = 'rgba(239,68,68,0.1)'; vs.style.color = 'var(--red)';
+            vs.textContent = '❌ This code has already been used.';
+            btn.disabled = false; return;
+          }
+
+          if (new Date(codeData.expiry) < new Date()) {
+            vs.style.background = 'rgba(239,68,68,0.1)'; vs.style.color = 'var(--red)';
+            vs.textContent = '❌ This code has expired. Contact admin for a new one.';
+            btn.disabled = false; return;
+          }
+
+          if (codeData.plan !== _plan) {
+            vs.style.background = 'rgba(239,68,68,0.1)'; vs.style.color = 'var(--red)';
+            vs.textContent = '❌ This code is for the ' + codeData.plan.toUpperCase() + ' plan, not ' + _plan.toUpperCase() + '.';
+            btn.disabled = false; return;
+          }
+
+          // Mark code as used, save transaction ID
+          await setDoc(doc(db, 'codes', code), {
+            ...codeData,
+            used: true,
+            usedAt: new Date().toISOString(),
+            usedBy: user.id,
+            usedByName: (user.firstName || '') + ' ' + (user.lastName || ''),
+            momoTxId: txId
+          });
+
+          // Notify admin via Firestore
+          try {
+            await setDoc(doc(db, 'notifications', 'activation_' + Date.now()), {
+              type: 'plan_activated',
+              userId: user.id,
+              userName: (user.firstName || '') + ' ' + (user.lastName || ''),
+              userEmail: user.email || '',
+              plan: _plan,
+              code: code,
+              momoTxId: txId,
+              activatedAt: new Date().toISOString(),
+              read: false
+            });
+          } catch(e) {}
+
+          activatePlan({ externalId: code, momoTxId: txId });
+          return;
+
+        } catch(e) { console.warn('Code check failed:', e); }
+      }
+
+      vs.style.background = 'rgba(239,68,68,0.1)'; vs.style.color = 'var(--red)';
+      vs.textContent = '❌ Could not verify. Check your internet and try again.';
+      btn.disabled = false;
+    }
+
+
+
+    function activatePlan(txData) {
+      const info   = IA.plans[_plan];
+      const expiry = new Date();
+      expiry.setMonth(expiry.getMonth() + 1);
+
+      const users = IA.getUsers();
+      const idx   = users.findIndex(u => u.id === user.id);
+      if (idx >= 0) {
+        users[idx].plan       = _plan;
+        users[idx].planExpiry = expiry.toISOString();
+        IA.saveUsers(users);
+      }
+      user.plan       = _plan;
+      user.planExpiry = expiry.toISOString();
+      IA.setCurrentUser(user);
+
+      localStorage.removeItem('ia_pending_plan_' + user.id);
+      try { document.getElementById('pendingBanner').style.display = 'none'; } catch(_) {}
+
+      // Audit log
+      try {
+        const rec = {
+          userId: user.id, plan: _plan, planName: info.name,
+          ref: _ref, txId: txData?.externalId || txData?.financialTransactionId || _ref,
+          amount: info.price, activatedAt: new Date().toISOString()
+        };
+        const log = JSON.parse(localStorage.getItem('ia_payment_log') || '[]');
+        log.push(rec);
+        localStorage.setItem('ia_payment_log', JSON.stringify(log));
+      } catch(_) {}
+
+      document.getElementById('confirmPlanName').textContent = info.name;
+      document.getElementById('confirmRef').textContent      = _ref;
+      showStep(3);
+    }
+  </script>
+</body>
+</html>

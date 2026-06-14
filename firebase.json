@@ -1,0 +1,7 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": ["firebase.json", ".firebaserc", "README.md", "SETUP_INSTRUCTIONS.md", "**/.*"],
+    "headers": [{ "source": "**", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }]
+  }
+}

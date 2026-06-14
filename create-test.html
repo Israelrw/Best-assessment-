@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Test — Best Assessment</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc }
+      from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+    function initFirebase() {
+      try {
+        const cfg = {
+          apiKey:"AIzaSyAYcGqhjzyVD2vOwRMseT6Q_B_gxtopp_8",
+          authDomain:"israel-assessment.firebaseapp.com",
+          projectId:"israel-assessment",
+          storageBucket:"israel-assessment.firebasestorage.app",
+          messagingSenderId:"859727274810",
+          appId:"1:859727274810:web:ba1269ae2a217bebe8e603"
+        };
+        const app = initializeApp(cfg);
+        const db  = getFirestore(app);
+        if (typeof IA !== 'undefined') {
+          IA._db = db;
+          IA._firestoreOps = async () => ({ collection, doc, setDoc, getDoc, getDocs, deleteDoc });
+          IA._getFirestore = () => db;
+        }
+      } catch(e) { console.warn('Firebase init failed:', e.message); }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initFirebase);
+    else initFirebase();
+  </script>
+  <style>
+    .q-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+    .q-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
+    .q-num{font-weight:800;color:var(--accent);font-size:14px;flex-shrink:0}
+    .q-type{padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text1);font-size:13px}
+    .opt-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .opt-radio{width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--accent)}
+    .opt-inp{flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text1);font-size:13px}
+    .opt-inp:focus{outline:none;border-color:var(--accent)}
+    .correct-badge{font-size:11px;color:var(--green);font-weight:700}
+    .field-lbl{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+    .field-inp{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text1);font-size:14px;box-sizing:border-box}
+    .field-inp:focus{outline:none;border-color:var(--accent)}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+    @media(max-width:480px){.form-row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <header class="site-header"></header>
+
+  <main style="max-width:800px;margin:0 auto;padding:24px 16px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button onclick="window.location.href='tests.html'" class="btn btn-secondary btn-sm">← Back</button>
+      <h1 class="page-title" style="margin:0;font-size:22px" id="pageTitle">📝 Create New Test</h1>
+    </div>
+
+    <!-- Test Info -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:20px">
+      <h3 style="margin:0 0 14px;font-size:15px">Test Information</h3>
+      <div style="margin-bottom:12px">
+        <div class="field-lbl">Test Title *</div>
+        <input type="text" id="testTitle" class="field-inp" placeholder="e.g. Biology Term 2 Exam"/>
+      </div>
+      <div class="form-row">
+        <div>
+          <div class="field-lbl">Subject</div>
+          <input type="text" id="testSubject" class="field-inp" placeholder="e.g. Biology"/>
+        </div>
+        <div>
+          <div class="field-lbl">Class</div>
+          <input type="text" id="testClass" class="field-inp" placeholder="e.g. S5PCB"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <div class="field-lbl">Duration (minutes)</div>
+          <input type="number" id="testDuration" class="field-inp" value="60" min="1"/>
+        </div>
+        <div>
+          <div class="field-lbl">Pass Mark (%)</div>
+          <input type="number" id="testPassMark" class="field-inp" value="50" min="1" max="100"/>
+        </div>
+      </div>
+      <div>
+        <div class="field-lbl">Instructions (optional)</div>
+        <textarea id="testInstructions" class="field-inp" rows="2" placeholder="e.g. Answer all questions. No calculators."></textarea>
+      </div>
+    </div>
+
+    <!-- Questions -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h3 style="margin:0;font-size:15px">Questions <span id="qCount" style="color:var(--text2);font-weight:400">(0)</span></h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="addQuestion('mcq')" class="btn btn-secondary btn-sm">+ MCQ</button>
+        <button onclick="addQuestion('truefalse')" class="btn btn-secondary btn-sm">+ True/False</button>
+        <button onclick="addQuestion('short')" class="btn btn-secondary btn-sm">+ Short Answer</button>
+      </div>
+    </div>
+
+    <div id="questionList"></div>
+
+    <div id="emptyMsg" style="text-align:center;padding:40px;color:var(--text2);background:var(--surface);border:1px dashed var(--border);border-radius:12px">
+      <div style="font-size:36px;margin-bottom:8px">➕</div>
+      <div>Tap a button above to add your first question</div>
+    </div>
+
+    <!-- Save Button -->
+    <div style="position:sticky;bottom:16px;margin-top:20px;display:flex;gap:10px">
+      <button onclick="saveTest()" class="btn btn-primary" style="flex:1;padding:16px;font-size:16px" id="saveBtn">
+        💾 Save & Publish Test
+      </button>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="nav.js"></script>
+  <script>
+    const user = IA.requireAuth();
+    if (!user) throw new Error('Not logged in');
+    buildNav('admin');
+
+    let questions = [];
+    let editingTestId = null;
+
+    // Check if editing existing test
+    const urlParams = new URLSearchParams(location.search);
+    const editId = urlParams.get('edit');
+    if (editId) {
+      const existing = IA.getTests().find(t => t.id === editId);
+      if (existing) {
+        editingTestId = editId;
+        document.getElementById('pageTitle').textContent = '✏️ Edit Test';
+        document.getElementById('saveBtn').textContent = '💾 Save Changes';
+        document.getElementById('testTitle').value = existing.title || '';
+        document.getElementById('testSubject').value = existing.subject || '';
+        document.getElementById('testClass').value = existing.className || '';
+        document.getElementById('testDuration').value = existing.duration || 60;
+        document.getElementById('testPassMark').value = existing.passMark || 50;
+        document.getElementById('testInstructions').value = existing.instructions || '';
+        questions = existing.questions || [];
+        renderAllQuestions();
+      }
+    }
+
+    function addQuestion(type) {
+      const q = { id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2,5), type, text: '', marks: 1 };
+      if (type === 'mcq') { q.options = ['', '', '', '']; q.correct = 0; }
+      if (type === 'truefalse') { q.correct = 'true'; }
+      if (type === 'short') { q.answers = ''; }
+      questions.push(q);
+      renderAllQuestions();
+      // Scroll to new question
+      setTimeout(() => {
+        const cards = document.querySelectorAll('.q-card');
+        if (cards.length) cards[cards.length-1].scrollIntoView({behavior:'smooth',block:'center'});
+      }, 100);
+    }
+
+    function renderAllQuestions() {
+      document.getElementById('qCount').textContent = '(' + questions.length + ')';
+      document.getElementById('emptyMsg').style.display = questions.length ? 'none' : 'block';
+      document.getElementById('questionList').innerHTML = questions.map((q, i) => renderQuestion(q, i)).join('');
+    }
+
+    function renderQuestion(q, i) {
+      const typeLabel = {mcq:'Multiple Choice',truefalse:'True / False',short:'Short Answer'}[q.type]||q.type;
+      let body = '';
+
+      if (q.type === 'mcq') {
+        body = q.options.map((opt, oi) => `
+          <div class="opt-row">
+            <input type="radio" class="opt-radio" name="correct_${q.id}" value="${oi}" ${q.correct==oi?'checked':''} onchange="setCorrect('${q.id}',${oi})"/>
+            <input type="text" class="opt-inp" placeholder="Option ${String.fromCharCode(65+oi)}" value="${escHtml(opt)}" oninput="updateOption('${q.id}',${oi},this.value)"/>
+            ${q.correct==oi?'<span class="correct-badge">✓ Correct</span>':''}
+          </div>`).join('');
+      } else if (q.type === 'truefalse') {
+        body = `
+          <div class="opt-row">
+            <input type="radio" class="opt-radio" name="correct_${q.id}" value="true" ${q.correct==='true'?'checked':''} onchange="setTFCorrect('${q.id}','true')"/>
+            <span style="font-size:14px">True</span>
+            ${q.correct==='true'?'<span class="correct-badge">✓ Correct</span>':''}
+          </div>
+          <div class="opt-row">
+            <input type="radio" class="opt-radio" name="correct_${q.id}" value="false" ${q.correct==='false'?'checked':''} onchange="setTFCorrect('${q.id}','false')"/>
+            <span style="font-size:14px">False</span>
+            ${q.correct==='false'?'<span class="correct-badge">✓ Correct</span>':''}
+          </div>`;
+      } else if (q.type === 'short') {
+        body = `<div>
+          <div class="field-lbl">Accepted Answers (separate with comma)</div>
+          <input type="text" class="field-inp" placeholder="e.g. photosynthesis, Photosynthesis" value="${escHtml(q.answers||'')}" oninput="updateShortAnswers('${q.id}',this.value)"/>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px">Student answer must match one of these (case-insensitive)</div>
+        </div>`;
+      }
+
+      return `<div class="q-card" id="qcard_${q.id}">
+        <div class="q-header">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+            <span class="q-num">Q${i+1}</span>
+            <select class="q-type" onchange="changeType('${q.id}',this.value)">
+              <option value="mcq" ${q.type==='mcq'?'selected':''}>Multiple Choice</option>
+              <option value="truefalse" ${q.type==='truefalse'?'selected':''}>True / False</option>
+              <option value="short" ${q.type==='short'?'selected':''}>Short Answer</option>
+            </select>
+            <input type="number" value="${q.marks||1}" min="1" max="20" style="width:60px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text1);font-size:12px" title="Marks" onchange="updateMarks('${q.id}',this.value)"/>
+            <span style="font-size:11px;color:var(--text2)">mark${(q.marks||1)>1?'s':''}</span>
+          </div>
+          <div style="display:flex;gap:4px">
+            ${i > 0 ? `<button onclick="moveQ('${q.id}',-1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--text1);font-size:12px">↑</button>` : ''}
+            ${i < questions.length-1 ? `<button onclick="moveQ('${q.id}',1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--text1);font-size:12px">↓</button>` : ''}
+            <button onclick="deleteQ('${q.id}')" style="background:rgba(239,68,68,.1);color:var(--red);border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">🗑</button>
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <textarea class="field-inp" rows="2" placeholder="Enter your question here..." oninput="updateQText('${q.id}',this.value)" style="resize:vertical">${escHtml(q.text||'')}</textarea>
+        </div>
+        ${body}
+      </div>`;
+    }
+
+    function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    function updateQText(id, val) { const q = questions.find(x=>x.id===id); if(q) q.text = val; }
+    function updateOption(id, oi, val) { const q = questions.find(x=>x.id===id); if(q) q.options[oi] = val; }
+    function setCorrect(id, oi) { const q = questions.find(x=>x.id===id); if(q) { q.correct = oi; renderAllQuestions(); } }
+    function setTFCorrect(id, val) { const q = questions.find(x=>x.id===id); if(q) { q.correct = val; renderAllQuestions(); } }
+    function updateShortAnswers(id, val) { const q = questions.find(x=>x.id===id); if(q) q.answers = val; }
+    function updateMarks(id, val) { const q = questions.find(x=>x.id===id); if(q) q.marks = parseInt(val)||1; }
+
+    function changeType(id, newType) {
+      const i = questions.findIndex(x=>x.id===id);
+      if(i<0) return;
+      const q = { id, type: newType, text: questions[i].text, marks: questions[i].marks };
+      if(newType==='mcq') { q.options=['','','','']; q.correct=0; }
+      if(newType==='truefalse') { q.correct='true'; }
+      if(newType==='short') { q.answers=''; }
+      questions[i] = q;
+      renderAllQuestions();
+    }
+
+    function deleteQ(id) {
+      questions = questions.filter(x=>x.id!==id);
+      renderAllQuestions();
+    }
+
+    function moveQ(id, dir) {
+      const i = questions.findIndex(x=>x.id===id);
+      const j = i + dir;
+      if(j<0||j>=questions.length) return;
+      [questions[i],questions[j]] = [questions[j],questions[i]];
+      renderAllQuestions();
+    }
+
+    async function saveTest() {
+      const title = document.getElementById('testTitle').value.trim();
+      if (!title) { IA.toast('Please enter a test title','error'); document.getElementById('testTitle').focus(); return; }
+      if (questions.length === 0) { IA.toast('Please add at least one question','error'); return; }
+
+      // Validate questions
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        if (!q.text.trim()) { IA.toast('Question ' + (i+1) + ' has no text','error'); return; }
+        if (q.type === 'mcq') {
+          const filled = q.options.filter(o => o.trim()).length;
+          if (filled < 2) { IA.toast('Question ' + (i+1) + ': add at least 2 options','error'); return; }
+        }
+      }
+
+      // Check limit (only for new tests)
+      if (!editingTestId && !IA.canCreateTest(user)) {
+        IA.toast('Test limit reached. Upgrade your plan.','error');
+        setTimeout(() => window.location.href = 'upgrade.html', 2000);
+        return;
+      }
+
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving...';
+
+      const test = {
+        id: editingTestId || 'test_' + Date.now(),
+        title,
+        subject: document.getElementById('testSubject').value.trim(),
+        className: document.getElementById('testClass').value.trim(),
+        duration: parseInt(document.getElementById('testDuration').value) || 60,
+        passMark: parseInt(document.getElementById('testPassMark').value) || 50,
+        instructions: document.getElementById('testInstructions').value.trim(),
+        questions,
+        ownerId: user.id,
+        createdAt: editingTestId ? (IA.getTests().find(t=>t.id===editingTestId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Save locally
+      const tests = IA.getTests();
+      const idx = tests.findIndex(t => t.id === test.id);
+      if (idx >= 0) tests[idx] = test; else tests.push(test);
+      IA.saveTests(tests);
+
+      // Update usage count
+      if (!editingTestId) {
+        const users = IA.getUsers();
+        const ui = users.findIndex(u => u.id === user.id);
+        if (ui >= 0) { users[ui].testsCreated = (users[ui].testsCreated||0)+1; IA.saveUsers(users); }
+      }
+
+      // Save to cloud in background
+      try { await IA.saveTestToCloud(test); } catch(e) { console.warn('Cloud save failed:', e); }
+
+      IA.toast(editingTestId ? '✅ Test updated!' : '✅ Test published!', 'success');
+      setTimeout(() => window.location.href = 'tests.html', 800);
+    }
+  </script>
+</body>
+</html>

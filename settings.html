@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Settings — Best Assessment</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="admin-page">
+  <div class="bg-grid"></div>
+  <header class="site-header"></header>
+
+  <main class="settings-main">
+    <h1 class="page-title">⚙️ Settings</h1>
+    <p class="page-sub">Customize your assessment platform</p>
+
+    <!-- Test Settings -->
+    <div class="settings-section">
+      <h3>🛡️ Test Defaults</h3>
+      <p class="sec-desc">Default settings applied to new tests (can be overridden per test)</p>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Anti-Cheat System</strong>
+          <span>Detect tab switching, window blur and fullscreen exits</span>
+        </div>
+        <label class="toggle"><input type="checkbox" id="s-antiCheat"/><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Max Violations Before Block</strong>
+          <span>Student is auto-blocked after this many violations</span>
+        </div>
+        <input type="number" id="s-maxViolations" min="1" max="10" style="width:80px"/>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Show Correct Answers After Exam</strong>
+          <span>Allow students to review correct answers in results</span>
+        </div>
+        <label class="toggle"><input type="checkbox" id="s-showAnswers"/><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Shuffle Questions</strong>
+          <span>Randomize question order for each student</span>
+        </div>
+        <label class="toggle"><input type="checkbox" id="s-mixQuestions"/><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Shuffle Answer Options</strong>
+          <span>Randomize MCQ option order for each student</span>
+        </div>
+        <label class="toggle"><input type="checkbox" id="s-mixOptions"/><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <!-- System Settings -->
+    <div class="settings-section">
+      <h3>🎨 System Appearance</h3>
+      <p class="sec-desc">Personalize how the platform looks</p>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Background Theme</strong>
+          <span>Choose your preferred color scheme</span>
+        </div>
+        <div class="bg-swatches">
+          <div class="bg-swatch s-default" title="Default"   data-bg="default"  onclick="setBg(this)"></div>
+          <div class="bg-swatch s-ocean"   title="Ocean"     data-bg="ocean"    onclick="setBg(this)"></div>
+          <div class="bg-swatch s-forest"  title="Forest"    data-bg="forest"   onclick="setBg(this)"></div>
+          <div class="bg-swatch s-sunset"  title="Sunset"    data-bg="sunset"   onclick="setBg(this)"></div>
+          <div class="bg-swatch s-purple"  title="Purple"    data-bg="purple"   onclick="setBg(this)"></div>
+          <div class="bg-swatch s-dark"    title="Deep Dark" data-bg="dark"     onclick="setBg(this)"></div>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Language</strong>
+          <span>Interface language (more coming soon)</span>
+        </div>
+        <select id="s-language" style="width:160px">
+          <option value="en">🇬🇧 English</option>
+          <option value="fr">🇫🇷 French</option>
+          <option value="rw">🇷🇼 Kinyarwanda</option>
+          <option value="sw">🇹🇿 Swahili</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Account Settings -->
+    <div class="settings-section">
+      <h3>👤 Account</h3>
+      <p class="sec-desc">Manage your account details</p>
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Change Credentials</strong>
+          <span>Update your username or password</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="openChangeCredentials()">Edit →</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Profile Photo</strong>
+          <span>Upload or change your avatar</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="openChangePhoto()">Change →</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Subscription Plan</strong>
+          <span id="currentPlanDisplay">Loading...</span>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="window.location.href='upgrade.html'">⭐ Upgrade</button>
+      </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="settings-section" style="border-color:rgba(239,68,68,0.2)">
+      <h3 style="color:var(--red)">⚠️ Danger Zone</h3>
+      <p class="sec-desc">Irreversible actions</p>
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Delete All My Tests</strong>
+          <span>Permanently delete all tests you've created</span>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteAllTests()">Delete All</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <strong>Sign Out</strong>
+          <span>Log out of your account</span>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="IA.logout()">Sign Out</button>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;display:flex;justify-content:flex-end">
+      <button class="btn btn-primary btn-lg" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="nav.js"></script>
+  <script>
+    const user = IA.requireAuth();
+    buildNav('settings');
+
+    const s = IA.getSettings();
+
+    // Load current settings
+    document.getElementById('s-antiCheat').checked    = s.antiCheat !== false;
+    document.getElementById('s-maxViolations').value  = s.maxCheatingAttempts || 3;
+    document.getElementById('s-showAnswers').checked  = s.showCorrectAnswers === true;
+    document.getElementById('s-mixQuestions').checked = s.mixQuestions !== false;
+    document.getElementById('s-mixOptions').checked   = s.mixOptions !== false;
+    document.getElementById('s-language').value       = s.language || 'en';
+
+    // Mark active bg swatch
+    document.querySelectorAll('.bg-swatch').forEach(sw => {
+      sw.classList.toggle('active', sw.dataset.bg === (s.bg || 'default'));
+    });
+
+    // Current plan display
+    const plan = IA.getUserPlan(user);
+    const planInfo = IA.plans[plan];
+    const myTests = IA.getTests().filter(t => t.ownerId === user.id).length;
+    const maxT = planInfo.tests === Infinity ? '∞' : planInfo.tests;
+    document.getElementById('currentPlanDisplay').textContent = `${planInfo.name} — ${myTests}/${maxT} tests`;
+
+    function setBg(el) {
+      document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function saveSettings() {
+      const bg = document.querySelector('.bg-swatch.active')?.dataset.bg || 'default';
+      const newSettings = {
+        antiCheat: document.getElementById('s-antiCheat').checked,
+        maxCheatingAttempts: parseInt(document.getElementById('s-maxViolations').value) || 3,
+        showCorrectAnswers: document.getElementById('s-showAnswers').checked,
+        mixQuestions: document.getElementById('s-mixQuestions').checked,
+        mixOptions: document.getElementById('s-mixOptions').checked,
+        language: document.getElementById('s-language').value,
+        bg
+      };
+      IA.saveSettings(newSettings);
+      IA.toast('✓ Settings saved!','success');
+      // Apply bg immediately
+      setTimeout(() => location.reload(), 600);
+    }
+
+    function deleteAllTests() {
+      if (!confirm('Delete ALL your tests? This cannot be undone.')) return;
+      if (!confirm('Are you absolutely sure? All test data will be lost.')) return;
+      const all = IA.getTests();
+      const kept = all.filter(t => t.ownerId !== user.id);
+      IA.saveTests(kept);
+      IA.toast('All tests deleted','warn');
+      setTimeout(() => window.location.href = 'tests.html', 800);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Print Lesson Plan</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 16px; }
+    .print-btn-bar { background: #1e293b; padding: 12px 16px; display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; border-radius: 10px; }
+    .print-btn { background: #4f8ef7; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .back-btn { background: #334155; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+    #previewFrame { width: 100%; min-height: 90vh; border: none; border-radius: 10px; background: #fff; }
+    @media print { .print-btn-bar { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="print-btn-bar">
+    <button class="back-btn" onclick="history.back()">← Back</button>
+    <span style="color:#94a3b8;font-size:13px">Your lesson plan is ready</span>
+    <button class="print-btn" onclick="printPlan()">🖨️ Print / Save as PDF</button>
+  </div>
+  <iframe id="previewFrame"></iframe>
+
+  <script>
+    function buildPDF(p) {
+      const fmtDate = p.date ? new Date(p.date).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+      const nl = s => (s||'').replace(/\n/g,'<br>');
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+      <style>
+        body{font-family:Arial,sans-serif;margin:20px;font-size:10px;color:#000;line-height:1.3}
+        h2{text-align:center;font-size:13px;font-weight:bold;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px}
+        .header-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:10px}
+        table{width:100%;border-collapse:collapse;margin-bottom:0}
+        td,th{border:1px solid #000;padding:4px 6px;vertical-align:top;font-size:10px}
+        .lbl{font-weight:bold;background:#fff;width:140px}
+        .col-header{font-weight:bold;background:#fff;text-align:center;font-size:10px}
+        .phase-lbl{font-weight:bold;vertical-align:top}
+        .activity-header{font-weight:bold;text-align:center;background:#fff}
+        @page{size:A4 portrait;margin:12mm}
+        @media print{body{margin:0}}
+      </style></head><body>
+      <h2>LESSON PLAN</h2>
+      <div class="header-row">
+        <span><strong>School Name:</strong> ${p.school||''}</span>
+        <span><strong>Teacher's Name:</strong> ${(p.teacher||'').toUpperCase()}</span>
+      </div>
+      <table>
+        <tr>
+          <th class="col-header">Term</th><th class="col-header">Date</th>
+          <th class="col-header">Subject</th><th class="col-header">Class</th>
+          <th class="col-header">Unit No</th><th class="col-header">Lesson No</th>
+          <th class="col-header">Duration</th><th class="col-header">Class size</th>
+        </tr>
+        <tr>
+          <td>${p.term||''}</td><td>${fmtDate}</td>
+          <td>${p.subject||''}</td><td>${p.className||''}</td>
+          <td>${p.unitNo||''}</td><td>${p.lessonNo||''}</td>
+          <td>${p.duration||''}</td><td>${p.classSize||''}</td>
+        </tr>
+        <tr><td colspan="2" class="lbl">Type of special educational needs to be catered for in this lesson and number of learners in each category</td><td colspan="6">${p.sen||''}</td></tr>
+        <tr><td colspan="2" class="lbl">Unit title</td><td colspan="6">${p.unitTitle||''}</td></tr>
+        <tr><td colspan="2" class="lbl">Key unit competence</td><td colspan="6">${nl(p.competence)}</td></tr>
+        <tr><td colspan="2" class="lbl">Title of the lesson</td><td colspan="6">${p.topic||''}</td></tr>
+        <tr><td colspan="2" class="lbl">Instructional objectives</td><td colspan="6">${nl(p.objective)}</td></tr>
+        <tr><td colspan="2" class="lbl">Plan of this class (Location)</td><td colspan="6">${p.plan||''}</td></tr>
+        <tr><td colspan="2" class="lbl">Learning materials</td><td colspan="6">${p.materials||''}</td></tr>
+        <tr><td colspan="2" class="lbl">References</td><td colspan="6">${p.references||''}</td></tr>
+      </table>
+      <table style="margin-top:0">
+        <tr>
+          <th class="col-header" style="width:110px">Timing for each step</th>
+          <th class="col-header" colspan="2">Description of teaching and learning activities</th>
+          <th class="col-header" style="width:160px">Generic competences and cross-cutting issues + some explanations</th>
+        </tr>
+        <tr>
+          <td></td>
+          <td class="activity-header">Teacher's activity</td>
+          <td class="activity-header">Learner's activity</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td class="phase-lbl">Introduction<br>(${p.introTime||'10 min'})</td>
+          <td>${nl(p.introTeacher)}</td><td>${nl(p.introLearner)}</td><td>${nl(p.introCC)}</td>
+        </tr>
+        <tr>
+          <td class="phase-lbl">Lesson Development<br>(${p.devTime||'20 min'})</td>
+          <td>${nl(p.devTeacher)}</td><td>${nl(p.devLearner)}</td><td>${nl(p.devCC)}</td>
+        </tr>
+        <tr>
+          <td class="phase-lbl">Conclusion<br>(${p.concTime||'10 min'})</td>
+          <td>${nl(p.concTeacher)}</td><td>${nl(p.concLearner)}</td><td>${nl(p.concCC)}</td>
+        </tr>
+        <tr><td colspan="2" class="lbl">Teacher's self-evaluation</td><td colspan="2">${p.evaluation||'Done.'}</td></tr>
+      </table>
+      </body></html>`;
+    }
+
+    function printPlan() {
+      const frame = document.getElementById('previewFrame');
+      const fw = frame.contentWindow;
+      fw.focus();
+      fw.print();
+    }
+
+    // Load plan from sessionStorage
+    window.onload = function() {
+      try {
+        const stored = sessionStorage.getItem('lp_print');
+        if (!stored) { document.body.innerHTML = '<div style="text-align:center;padding:40px;color:#666">No lesson plan found. Go back and try again.</div>'; return; }
+        const p = JSON.parse(stored);
+        const html = buildPDF(p);
+        const frame = document.getElementById('previewFrame');
+        frame.srcdoc = html;
+        frame.style.height = '90vh';
+      } catch(e) {
+        document.body.innerHTML = '<div style="text-align:center;padding:40px;color:red">Error: ' + e.message + '</div>';
+      }
+    };
+  </script>
+</body>
+</html>

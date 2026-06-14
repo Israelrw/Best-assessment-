@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Code Generator — Best Assessment</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc }
+      from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+    function initFirebase() {
+      try {
+        const cfg = {
+          apiKey:"AIzaSyAYcGqhjzyVD2vOwRMseT6Q_B_gxtopp_8",
+          authDomain:"israel-assessment.firebaseapp.com",
+          projectId:"israel-assessment",
+          storageBucket:"israel-assessment.firebasestorage.app",
+          messagingSenderId:"859727274810",
+          appId:"1:859727274810:web:ba1269ae2a217bebe8e603"
+        };
+        const app = initializeApp(cfg);
+        const db  = getFirestore(app);
+        if (typeof IA !== 'undefined') {
+          IA._db = db;
+          IA._firestoreOps = async () => ({ collection, doc, setDoc, getDoc, getDocs, deleteDoc });
+          IA._getFirestore = () => db;
+        }
+        window._baDb  = db;
+        window._baOps = { collection, doc, setDoc, getDoc, getDocs, deleteDoc };
+      } catch(e) { console.warn('Firebase init failed:', e.message); }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initFirebase);
+    else initFirebase();
+  </script>
+</head>
+<body class="admin-page">
+  <div class="bg-grid"></div>
+  <header class="site-header"></header>
+
+  <main style="max-width:600px;margin:0 auto;padding:24px 16px">
+    <h1 class="page-title">🔑 Activation Code Generator</h1>
+    <p class="page-sub">Generate unique one-time codes for paying students</p>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px">
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Plan</label>
+        <select id="planSelect" style="width:100%;margin-top:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text1);font-size:15px">
+          <option value="basic">Basic — 2,500 RWF (20 tests)</option>
+          <option value="plus">Basic Plus — 3,500 RWF (45 tests)</option>
+          <option value="pro">Pro — 5,000 RWF (Unlimited)</option>
+        </select>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Student Name (optional)</label>
+        <input type="text" id="studentName" placeholder="e.g. John Doe" style="width:100%;margin-top:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text1);font-size:15px;box-sizing:border-box"/>
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Valid For (days)</label>
+        <input type="number" id="validDays" value="30" min="1" max="365" style="width:100%;margin-top:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text1);font-size:15px;box-sizing:border-box"/>
+      </div>
+      <button onclick="generateCode()" class="btn btn-primary" style="width:100%;padding:14px;font-size:16px">✨ Generate Code</button>
+    </div>
+
+    <div id="generatedCode" style="display:none;background:var(--surface);border:2px solid var(--green);border-radius:14px;padding:20px;margin-bottom:20px;text-align:center">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:8px">ACTIVATION CODE</div>
+      <div id="codeDisplay" style="font-size:32px;font-weight:900;letter-spacing:6px;color:var(--green);font-family:monospace"></div>
+      <div id="codeDetails" style="font-size:13px;color:var(--text2);margin-top:8px"></div>
+      <button onclick="copyCode()" class="btn btn-green" style="margin-top:14px;width:100%">📋 Copy Code</button>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3 style="margin:0;font-size:16px">Active Codes</h3>
+        <button onclick="loadCodes()" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+      <div id="codesTable">
+        <div style="text-align:center;color:var(--text2);padding:20px">Loading...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="nav.js"></script>
+  <script>
+    const user = IA.requireAuth();
+    if (!user) throw new Error('Not logged in');
+    buildNav('codes');
+
+    let lastCode = '';
+
+    function makeCode(plan) {
+      const prefix = { basic: 'BSC', plus: 'PLS', pro: 'PRO' }[plan] || 'ACT';
+      const rand = Math.random().toString(36).substring(2,8).toUpperCase();
+      return prefix + '-' + rand;
+    }
+
+    async function generateCode() {
+      const plan     = document.getElementById('planSelect').value;
+      const name     = document.getElementById('studentName').value.trim();
+      const days     = parseInt(document.getElementById('validDays').value) || 30;
+      const code     = makeCode(plan);
+      const expiry   = new Date(Date.now() + days * 86400000).toISOString();
+      const planNames = { basic: 'Basic', plus: 'Basic Plus', pro: 'Pro' };
+
+      const codeDoc = {
+        code, plan, expiry,
+        studentName: name || 'Any',
+        createdAt: new Date().toISOString(),
+        createdBy: user.id,
+        used: false
+      };
+
+      // Wait for Firebase
+      let db = null;
+      for (let i = 0; i < 8; i++) {
+        await new Promise(r => setTimeout(r, 800));
+        db = IA._getFirestore();
+        if (db) break;
+      }
+
+      if (db) {
+        try {
+          const { doc, setDoc } = await IA._firestoreOps();
+          await setDoc(doc(db, 'codes', code), codeDoc);
+        } catch(e) { console.warn('Code save failed:', e); }
+      }
+
+      lastCode = code;
+      document.getElementById('codeDisplay').textContent = code;
+      document.getElementById('codeDetails').textContent =
+        planNames[plan] + ' plan · Valid ' + days + ' days' + (name ? ' · For: ' + name : '');
+      document.getElementById('generatedCode').style.display = 'block';
+      IA.toast('Code generated!', 'success');
+      loadCodes();
+    }
+
+    function copyCode() {
+      IA.copyText(lastCode).then(() => IA.toast('Code copied!', 'success'));
+    }
+
+    async function loadCodes() {
+      const table = document.getElementById('codesTable');
+      table.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px">Loading...</div>';
+
+      let db = null;
+      for (let i = 0; i < 8; i++) {
+        await new Promise(r => setTimeout(r, 600));
+        db = IA._getFirestore();
+        if (db) break;
+      }
+
+      if (!db) { table.innerHTML = '<div style="color:var(--red);padding:12px">Firebase not connected</div>'; return; }
+
+      try {
+        const { collection, getDocs } = await IA._firestoreOps();
+        const snap = await getDocs(collection(db, 'codes'));
+        const codes = snap.docs.map(d => d.data()).filter(c => c.createdBy === user.id);
+        codes.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        if (!codes.length) { table.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px">No codes yet</div>'; return; }
+
+        const planColors = { basic: 'var(--accent)', plus: 'var(--yellow)', pro: 'var(--green)' };
+
+        table.innerHTML = codes.map(c => {
+          const expired = new Date(c.expiry) < new Date();
+          const status  = c.used ? '✅ Used' : expired ? '❌ Expired' : '🟢 Active';
+          const expDate = new Date(c.expiry).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-family:monospace;font-size:16px;font-weight:800;letter-spacing:2px;color:${planColors[c.plan]||'var(--text1)'}">${c.code}</div>
+              <div style="font-size:12px;color:var(--text2)">${c.plan.toUpperCase()} · ${c.studentName} · Expires ${expDate}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px">${status}</span>
+              ${!c.used && !expired ? `<button onclick="revokeCode('${c.code}')" style="background:rgba(239,68,68,.15);color:var(--red);border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Revoke</button>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      } catch(e) {
+        table.innerHTML = '<div style="color:var(--red);padding:12px">Error loading codes</div>';
+      }
+    }
+
+    async function revokeCode(code) {
+      if (!confirm('Revoke code ' + code + '? It will no longer work.')) return;
+      const db = IA._getFirestore();
+      if (!db) return;
+      try {
+        const { deleteDoc, doc } = await IA._firestoreOps();
+        await deleteDoc(doc(db, 'codes', code));
+        IA.toast('Code revoked', 'warn');
+        loadCodes();
+      } catch(e) { IA.toast('Failed to revoke', 'error'); }
+    }
+
+    loadCodes();
+  </script>
+</body>
+</html>

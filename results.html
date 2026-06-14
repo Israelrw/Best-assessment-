@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Results — Best Assessment</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, deleteDoc }
+      from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+    function initFirebase() {
+      try {
+        const cfg = {
+          apiKey:"AIzaSyAYcGqhjzyVD2vOwRMseT6Q_B_gxtopp_8",
+          authDomain:"israel-assessment.firebaseapp.com",
+          projectId:"israel-assessment",
+          storageBucket:"israel-assessment.firebasestorage.app",
+          messagingSenderId:"859727274810",
+          appId:"1:859727274810:web:ba1269ae2a217bebe8e603"
+        };
+        const app = initializeApp(cfg);
+        const db  = getFirestore(app);
+        if (typeof IA !== 'undefined') {
+          IA._db = db;
+          IA._firestoreOps = async () => ({ collection, doc, setDoc, getDoc, getDocs, query, where, deleteDoc });
+          IA._getFirestore = () => db;
+        }
+        window._baDb  = db;
+        window._baOps = { collection, doc, setDoc, getDoc, getDocs, query, where, deleteDoc };
+        console.log('[BA] Firebase connected ✓');
+      } catch(e) { console.warn('[BA] Firebase init failed:', e.message); }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initFirebase);
+    else initFirebase();
+  </script>
+</head>
+<body class="admin-page">
+  <div class="bg-grid"></div>
+  <header class="site-header"></header>
+
+  <main class="results-main">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 class="page-title">Results</h1>
+        <p class="page-sub">All student submissions across your tests</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-green" onclick="exportAll()">📊 Export Excel</button>
+        <button class="btn btn-danger btn-sm" onclick="clearAllResults()">🗑 Clear All</button>
+      </div>
+    </div>
+
+    <div class="results-summary" id="summaryRow"></div>
+
+    <div class="results-toolbar" style="margin-bottom:16px">
+      <input type="text" id="searchInput" placeholder="Search by name or ID..." oninput="renderTestBoxes()"/>
+      <select id="filterStatus" onchange="renderTestBoxes()">
+        <option value="">All Results</option>
+        <option value="pass">Pass Only</option>
+        <option value="fail">Fail Only</option>
+      </select>
+    </div>
+
+    <div id="loadingMsg" style="text-align:center;padding:40px;color:var(--text2)">⏳ Loading results from cloud...</div>
+    <div id="testBoxesContainer" style="display:none"></div>
+    <div id="emptyResults" class="empty-state hidden">
+      <div class="empty-icon">📭</div>
+      <h3>No results yet</h3>
+      <p>Results will appear here once students complete assessments.</p>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="nav.js"></script>
+  <script>
+    const user = IA.requireAuth();
+    if (!user) throw new Error('Not logged in');
+    buildNav('results');
+
+    let allResults = [];
+
+    async function loadResultsFromCloud() {
+      document.getElementById('loadingMsg').style.display = 'block';
+      document.getElementById('testBoxesContainer').style.display = 'none';
+
+      let db = null;
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 800));
+        db = IA._getFirestore();
+        if (db) break;
+      }
+
+      if (db) {
+        try {
+          const { collection, getDocs } = await IA._firestoreOps();
+          const snap = await getDocs(collection(db, 'results'));
+          const allCloud = snap.docs.map(d => d.data());
+
+          // Get my test IDs
+          const tSnap = await getDocs(collection(db, 'tests'));
+          const myTestIds = tSnap.docs.map(d => d.data()).filter(t => t.ownerId === user.id).map(t => t.id);
+
+          allResults = allCloud.filter(r =>
+            r.adminId === user.id || myTestIds.includes(r.testId)
+          );
+          allResults.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+          document.getElementById('loadingMsg').style.display = 'none';
+          document.getElementById('testBoxesContainer').style.display = 'block';
+          renderSummary();
+          renderTestBoxes();
+          return;
+        } catch(e) {
+          console.warn('Cloud load failed:', e.message);
+        }
+      }
+
+      // Fallback to localStorage
+      allResults = IA.getResults().filter(r => r.adminId === user.id);
+      allResults.sort((a,b) => new Date(b.date) - new Date(a.date));
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('testBoxesContainer').style.display = 'block';
+      renderSummary();
+      renderTestBoxes();
+    }
+
+    function renderSummary() {
+      const total   = allResults.length;
+      const passed  = allResults.filter(r => r.passed).length;
+      const failed  = total - passed;
+      const avg     = total > 0 ? Math.round(allResults.reduce((s,r) => s+(r.percent||0),0)/total) : 0;
+      const viols   = allResults.filter(r => r.cheatingFlags > 0).length;
+      document.getElementById('summaryRow').innerHTML = `
+        <div class="sum-card"><div class="sum-n" style="color:var(--accent)">${total}</div><div class="sum-l">TOTAL</div></div>
+        <div class="sum-card"><div class="sum-n" style="color:var(--green)">${passed}</div><div class="sum-l">PASSED</div></div>
+        <div class="sum-card"><div class="sum-n" style="color:var(--red)">${failed}</div><div class="sum-l">FAILED</div></div>
+        <div class="sum-card"><div class="sum-n" style="color:var(--yellow)">${avg}%</div><div class="sum-l">AVG SCORE</div></div>
+        <div class="sum-card"><div class="sum-n" style="color:var(--orange)">${viols}</div><div class="sum-l">WITH VIOLATIONS</div></div>`;
+    }
+
+    function renderTestBoxes() {
+      const search = (document.getElementById('searchInput').value || '').toLowerCase();
+      const status = document.getElementById('filterStatus').value;
+
+      let filtered = allResults.filter(r => {
+        const name = ((r.student && r.student.name) || '').toLowerCase();
+        const sid  = ((r.student && r.student.id)   || '').toLowerCase();
+        const matchSearch = !search || name.includes(search) || sid.includes(search);
+        const matchStatus = !status || (status === 'pass' ? r.passed : !r.passed);
+        return matchSearch && matchStatus;
+      });
+
+      const container = document.getElementById('testBoxesContainer');
+      const empty     = document.getElementById('emptyResults');
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      // Group by testId
+      const groups = {};
+      filtered.forEach(r => {
+        const key = r.testId || 'unknown';
+        if (!groups[key]) groups[key] = { title: r.testTitle || 'Untitled Test', results: [] };
+        groups[key].results.push(r);
+      });
+
+      container.innerHTML = Object.entries(groups).map(([testId, group], gi) => {
+        const total  = group.results.length;
+        const passed = group.results.filter(r => r.passed).length;
+        const avg    = total > 0 ? Math.round(group.results.reduce((s,r) => s+(r.percent||0),0)/total) : 0;
+
+        const rows = group.results.map((r, i) => {
+          const name = (r.student && r.student.name) || 'Unknown';
+          const sid  = (r.student && r.student.id)   || '-';
+          const date = r.date ? new Date(r.date).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '-';
+          let enc = '';
+          try { enc = btoa(unescape(encodeURIComponent(JSON.stringify(r)))); } catch(_) {}
+          return `<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px 12px">${i+1}</td>
+            <td style="padding:10px 12px"><strong>${name}</strong><br><span style="font-size:11px;color:var(--text2)">${sid}</span></td>
+            <td style="padding:10px 12px">${r.scored||0} / ${r.total||0}</td>
+            <td style="padding:10px 12px"><span style="background:${(r.percent||0)>=50?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'};color:${(r.percent||0)>=50?'var(--green)':'var(--red)'};padding:3px 10px;border-radius:20px;font-weight:700;font-size:13px">${r.percent||0}%</span></td>
+            <td style="padding:10px 12px"><span style="background:${r.passed?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'};color:${r.passed?'var(--green)':'var(--red)'};padding:3px 10px;border-radius:20px;font-weight:700;font-size:12px">${r.passed?'PASS':'FAIL'}</span></td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--text2)">${date}</td>
+            <td style="padding:10px 12px">${enc ? `<a href="result.html?r=${encodeURIComponent(enc)}" class="btn btn-secondary" style="font-size:12px;padding:5px 12px">View</a>` : ''}</td>
+          </tr>`;
+        }).join('');
+
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:20px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface2);flex-wrap:wrap;gap:8px;cursor:pointer" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'':'none'">
+            <div>
+              <div style="font-size:16px;font-weight:800;color:var(--text1)">📝 ${group.title}</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:3px">${total} submission${total!==1?'s':''} &nbsp;·&nbsp; ${passed} passed &nbsp;·&nbsp; Avg ${avg}%</div>
+            </div>
+            <span style="background:rgba(79,142,247,.15);color:var(--accent);padding:4px 14px;border-radius:20px;font-size:13px;font-weight:700">${total} students ▼</span>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr style="background:var(--surface2);font-size:11px;color:var(--text2);text-transform:uppercase">
+                <th style="padding:8px 12px;text-align:left">#</th>
+                <th style="padding:8px 12px;text-align:left">Student</th>
+                <th style="padding:8px 12px;text-align:left">Score</th>
+                <th style="padding:8px 12px;text-align:left">%</th>
+                <th style="padding:8px 12px;text-align:left">Status</th>
+                <th style="padding:8px 12px;text-align:left">Date</th>
+                <th style="padding:8px 12px;text-align:left">Action</th>
+              </tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function exportAll() {
+      if (!allResults.length) { IA.toast('No results to export','warn'); return; }
+      IA.exportToExcel(allResults, 'all_results');
+    }
+
+    async function clearAllResults() {
+      if (!confirm('Delete ALL results? This cannot be undone.')) return;
+      try {
+        const db = IA._getFirestore();
+        if (db) {
+          const { collection, getDocs } = await IA._firestoreOps();
+          const snap = await getDocs(collection(db, 'results'));
+          const myTests = allResults.map(r => r.id);
+          for (const d of snap.docs) {
+            if (myTests.includes(d.id)) {
+              const { deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
+              await deleteDoc(d.ref);
+            }
+          }
+        }
+      } catch(e) { console.warn('Cloud clear failed:', e); }
+
+      const kept = IA.getResults().filter(r => r.adminId !== user.id);
+      IA.saveResults(kept);
+      allResults = [];
+      renderSummary();
+      renderTestBoxes();
+      IA.toast('All results cleared','warn');
+    }
+
+    loadResultsFromCloud();
+  </script>
+</body>
+</html>

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign In — Best Assessment</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getAuth, sendPasswordResetEmail, createUserWithEmailAndPassword,
+             sendEmailVerification, signInWithEmailAndPassword }
+      from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+    function initFirebase() {
+      try {
+        const cfg = {
+          apiKey:"AIzaSyAYcGqhjzyVD2vOwRMseT6Q_B_gxtopp_8",
+          authDomain:"israel-assessment.firebaseapp.com",
+          projectId:"israel-assessment",
+          storageBucket:"israel-assessment.firebasestorage.app",
+          messagingSenderId:"859727274810",
+          appId:"1:859727274810:web:ba1269ae2a217bebe8e603"
+        };
+        const app  = initializeApp(cfg);
+        const auth = getAuth(app);
+        window._baAuth = auth;
+        window._baAuthOps = { sendPasswordResetEmail, createUserWithEmailAndPassword,
+                               sendEmailVerification, signInWithEmailAndPassword };
+        console.log('[BA] Firebase Auth ready');
+      } catch(e) { console.warn('[BA] Firebase Auth init failed:', e.message); }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initFirebase);
+    else initFirebase();
+  </script>
+</head>
+<body class="auth-page">
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-mark">BA</div>
+      <div>
+        <div style="font-weight:900;font-size:17px;">Best Assessment</div>
+        <div style="font-size:11px;color:var(--text2);">Auto Grading System</div>
+      </div>
+    </div>
+
+    <div class="auth-badge">🎓 Welcome</div>
+    <h1 class="auth-title">Sign in to your <span>Account</span></h1>
+    <p class="auth-sub">Create tests, share with students, and get instant results.</p>
+
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('login')">Sign In</div>
+      <div class="auth-tab" onclick="switchTab('register')">Create Account</div>
+    </div>
+
+    <!-- Login Form -->
+    <div class="auth-form" id="loginForm">
+      <div class="form-group">
+        <label>Username or Email</label>
+        <input type="text" id="loginUser" placeholder="your username" autocomplete="username"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="pass-input-wrap">
+          <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"/>
+          <button class="pass-toggle" onclick="togglePass('loginPass',this)" type="button">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg w-full" onclick="doLogin()">Sign In →</button>
+      <div style="text-align:center;margin-top:12px">
+        <a href="#" onclick="showForgotPassword()" style="color:var(--accent);font-size:13px;text-decoration:none">Forgot password?</a>
+      </div>
+    </div>
+
+    <!-- Forgot Password Form -->
+    <div class="auth-form hidden" id="forgotForm">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:36px;margin-bottom:8px">🔑</div>
+        <h3 style="margin:0 0 6px;font-size:16px">Reset Password</h3>
+        <p style="color:var(--text2);font-size:13px;margin:0">Enter your email and we will send you a reset link.</p>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="resetEmail" placeholder="you@example.com"/>
+      </div>
+      <div id="resetStatus" style="display:none;padding:10px;border-radius:8px;font-size:13px;text-align:center;margin-bottom:12px"></div>
+      <button class="btn btn-primary btn-lg w-full" onclick="doResetPassword()">Send Reset Link →</button>
+      <div style="text-align:center;margin-top:12px">
+        <a href="#" onclick="showLogin()" style="color:var(--accent);font-size:13px;text-decoration:none">← Back to Sign In</a>
+      </div>
+    </div>
+
+    <!-- Register Form -->
+    <div class="auth-form hidden" id="registerForm">
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>First Name</label>
+          <input type="text" id="regFirst" placeholder="Israel"/>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Last Name</label>
+          <input type="text" id="regLast" placeholder="HASHIMWIMANA"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="regUser" placeholder="choose a username"/>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="regEmail" placeholder="you@example.com"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="pass-input-wrap">
+          <input type="password" id="regPass" placeholder="at least 6 characters"/>
+          <button class="pass-toggle" onclick="togglePass('regPass',this)" type="button">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <div class="pass-input-wrap">
+          <input type="password" id="regPass2" placeholder="repeat password"/>
+          <button class="pass-toggle" onclick="togglePass('regPass2',this)" type="button">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg w-full" onclick="doRegister()">Create Account →</button>
+    </div>
+
+    <!-- Email Verification Notice -->
+    <div class="auth-form hidden" id="verifyForm">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:48px;margin-bottom:8px">📧</div>
+        <h3 style="margin:0 0 6px;font-size:16px">Verify Your Email</h3>
+        <p style="color:var(--text2);font-size:13px;margin:0" id="verifyMsg">A verification link has been sent to your email. Please check your inbox and click the link to activate your account.</p>
+      </div>
+      <div id="verifyStatus" style="display:none;padding:10px;border-radius:8px;font-size:13px;text-align:center;margin-bottom:12px"></div>
+      <button class="btn btn-primary btn-lg w-full" onclick="checkVerified()">✅ I have verified my email</button>
+      <button class="btn btn-secondary w-full" style="margin-top:8px" onclick="resendVerification()">📧 Resend Verification Email</button>
+      <button class="btn w-full" style="margin-top:8px;background:var(--surface2);color:var(--text1)" onclick="skipVerification()">Skip for now → Go to Dashboard</button>
+      <div style="text-align:center;margin-top:12px">
+        <a href="#" onclick="showLogin()" style="color:var(--accent);font-size:13px;text-decoration:none">← Back to Sign In</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // Redirect if already logged in
+    if (IA.getCurrentUser()) window.location.href = 'tests.html';
+
+    function switchTab(tab) {
+      document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
+      document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+      document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+    }
+
+    function togglePass(id, btn) {
+      const inp = document.getElementById(id);
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+      btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+    }
+
+    async function doLogin() {
+      const uname = document.getElementById('loginUser').value.trim();
+      const pass  = document.getElementById('loginPass').value;
+      if (!uname || !pass) { IA.toast('Please fill in all fields','error'); return; }
+
+      let users = IA.getUsers();
+      let user  = users.find(u => (u.username === uname || u.email === uname) && u.password === btoa(pass));
+
+      // Wait for Firebase to init
+      let db   = null;
+      let auth = null;
+      for (let i = 0; i < 6; i++) {
+        await new Promise(r => setTimeout(r, 600));
+        db   = IA._getFirestore();
+        auth = window._baAuth;
+        if (db && auth) break;
+      }
+
+      // Try Firebase Auth (handles password resets)
+      if (!user && auth) {
+        try {
+          IA.toast('Checking credentials...', 'info');
+          const { signInWithEmailAndPassword } = window._baAuthOps;
+          // Try email login (uname might be email)
+          let email = uname;
+          // If username given, find email from Firestore
+          if (!uname.includes('@') && db) {
+            try {
+              const { collection, query, where, getDocs } = await IA._firestoreOps();
+              const q = query(collection(db, 'users'), where('username', '==', uname));
+              const snap = await getDocs(q);
+              if (!snap.empty) email = snap.docs[0].data().email;
+            } catch(e) {}
+          }
+          const cred = await signInWithEmailAndPassword(auth, email, pass);
+          // Firebase login succeeded — find or restore user
+          if (db) {
+            const { collection, query, where, getDocs, doc, setDoc } = await IA._firestoreOps();
+            const q2 = query(collection(db, 'users'), where('email', '==', email));
+            const snap2 = await getDocs(q2);
+            if (!snap2.empty) {
+              const cloudUser = snap2.docs[0].data();
+              cloudUser.password = btoa(pass);
+              const idx = users.findIndex(u => u.id === cloudUser.id);
+              if (idx >= 0) users[idx] = cloudUser;
+              else users.push(cloudUser);
+              IA.saveUsers(users);
+              user = cloudUser;
+              // Update password in Firestore too
+              await setDoc(doc(db, 'users', cloudUser.id), cloudUser);
+            } else {
+              // Firebase Auth exists but no profile — create one automatically
+              const firebaseUid = cred.user.uid;
+              const displayName = cred.user.displayName || email.split('@')[0];
+              const newUser = {
+                id: 'u_' + Date.now(),
+                firebaseUid,
+                firstName: displayName,
+                lastName: '',
+                username: email.split('@')[0].replace(/[^a-zA-Z0-9]/g,''),
+                email,
+                password: btoa(pass),
+                plan: 'free',
+                testsCreated: 0,
+                avatar: null,
+                emailVerified: true,
+                createdAt: new Date().toISOString()
+              };
+              await setDoc(doc(db, 'users', newUser.id), newUser);
+              users.push(newUser);
+              IA.saveUsers(users);
+              user = newUser;
+              IA.toast('Profile restored successfully!', 'success');
+            }
+          } else {
+            // No Firestore - create minimal local user
+            const newUser = {
+              id: 'u_' + Date.now(),
+              firstName: email.split('@')[0],
+              lastName: '',
+              username: email.split('@')[0],
+              email, password: btoa(pass),
+              plan: 'free', testsCreated: 0,
+              emailVerified: true,
+              createdAt: new Date().toISOString()
+            };
+            users.push(newUser);
+            IA.saveUsers(users);
+            user = newUser;
+          }
+        } catch(e) {
+          console.warn('Firebase auth error:', e.code, e.message);
+          if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+            IA.toast('Wrong password. Use "Forgot password?" to reset.', 'error');
+            return;
+          }
+          if (e.code === 'auth/user-not-found') {
+            IA.toast('No account found with this email.', 'error');
+            return;
+          }
+          if (e.code === 'auth/too-many-requests') {
+            IA.toast('Too many attempts. Please wait a few minutes and try again.', 'error');
+            return;
+          }
+          if (e.code === 'auth/invalid-email') {
+            // Username given but not email - continue to Firestore check
+          }
+        }
+      }
+
+      // Try Firestore username lookup
+      if (!user && db) {
+        try {
+          const { collection, query, where, getDocs } = await IA._firestoreOps();
+          const q = query(collection(db, 'users'), where('username', '==', uname));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const cloudUser = snap.docs[0].data();
+            if (cloudUser.password === btoa(pass)) {
+              users.push(cloudUser);
+              IA.saveUsers(users);
+              user = cloudUser;
+            }
+          }
+        } catch(e) {}
+      }
+
+      if (!user) { IA.toast('Invalid username or password','error'); return; }
+
+      // Restore tests from cloud if local is empty
+      const myTests = IA.getTests().filter(t => t.ownerId === user.id);
+      if (myTests.length === 0) {
+        try {
+          const db = IA._getFirestore();
+          if (db) {
+            const { collection, query, where, getDocs } = await IA._firestoreOps();
+            const q = query(collection(db, 'tests'), where('ownerId', '==', user.id));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              const cloudTests = snap.docs.map(d => d.data());
+              const allTests = IA.getTests();
+              cloudTests.forEach(t => { if (!allTests.find(x => x.id === t.id)) allTests.push(t); });
+              localStorage.setItem('ia_tests', JSON.stringify(allTests));
+              IA.toast('Tests restored from cloud ✓', 'success');
+            }
+          }
+        } catch(e) {}
+      }
+
+      IA.setCurrentUser(user);
+      IA.toast('Welcome back, ' + user.firstName + '! 👋','success');
+      setTimeout(() => window.location.href = 'tests.html', 800);
+    }
+
+    let _pendingUser = null;
+    let _firebaseUser = null;
+
+    function showLogin() {
+      document.getElementById('loginForm').classList.remove('hidden');
+      document.getElementById('registerForm').classList.add('hidden');
+      document.getElementById('forgotForm').classList.add('hidden');
+      document.getElementById('verifyForm').classList.add('hidden');
+      document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', i===0));
+    }
+    function showForgotPassword() {
+      document.getElementById('loginForm').classList.add('hidden');
+      document.getElementById('forgotForm').classList.remove('hidden');
+    }
+
+    async function doResetPassword() {
+      const email = document.getElementById('resetEmail').value.trim();
+      const status = document.getElementById('resetStatus');
+      if (!email) { IA.toast('Please enter your email','error'); return; }
+
+      status.style.display = 'block';
+      status.style.background = 'rgba(79,142,247,0.1)';
+      status.style.color = 'var(--accent)';
+      status.textContent = '⏳ Sending reset link...';
+
+      // Wait for Firebase Auth
+      let auth = null;
+      for (let i = 0; i < 8; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        auth = window._baAuth;
+        if (auth) break;
+      }
+
+      if (auth) {
+        try {
+          const { sendPasswordResetEmail } = window._baAuthOps;
+          await sendPasswordResetEmail(auth, email);
+          status.style.background = 'rgba(34,197,94,0.1)';
+          status.style.color = 'var(--green)';
+          status.textContent = '✅ Reset link sent! Check your email inbox (and spam folder).';
+        } catch(e) {
+          status.style.background = 'rgba(239,68,68,0.1)';
+          status.style.color = 'var(--red)';
+          if (e.code === 'auth/user-not-found') status.textContent = '❌ No account found with this email.';
+          else if (e.code === 'auth/invalid-email') status.textContent = '❌ Invalid email address.';
+          else status.textContent = '❌ Error: ' + e.message;
+        }
+      } else {
+        status.style.background = 'rgba(239,68,68,0.1)';
+        status.style.color = 'var(--red)';
+        status.textContent = '❌ Service not available. Try again.';
+      }
+    }
+
+    async function doRegister() {
+      const first = document.getElementById('regFirst').value.trim();
+      const last  = document.getElementById('regLast').value.trim();
+      const uname = document.getElementById('regUser').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const pass  = document.getElementById('regPass').value;
+      const pass2 = document.getElementById('regPass2').value;
+
+      if (!first || !last || !uname || !email || !pass) { IA.toast('Fill in all fields','error'); return; }
+      if (pass !== pass2) { IA.toast('Passwords do not match','error'); return; }
+      if (pass.length < 6) { IA.toast('Password must be at least 6 characters','error'); return; }
+
+      // Basic email format check
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { IA.toast('Please enter a valid email address','error'); return; }
+
+      const users = IA.getUsers();
+      if (users.find(u => u.username === uname)) { IA.toast('Username already taken','error'); return; }
+      if (users.find(u => u.email === email)) { IA.toast('Email already registered','error'); return; }
+
+      // Store pending user data
+      _pendingUser = {
+        id: 'u_' + Date.now(),
+        firstName: first, lastName: last,
+        username: uname, email, password: btoa(pass),
+        plan: 'free', testsCreated: 0,
+        avatar: null, emailVerified: false,
+        createdAt: new Date().toISOString()
+      };
+
+      // Try Firebase Auth email verification
+      let auth = null;
+      for (let i = 0; i < 6; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        auth = window._baAuth;
+        if (auth) break;
+      }
+
+      if (auth) {
+        try {
+          const { createUserWithEmailAndPassword, sendEmailVerification } = window._baAuthOps;
+          const cred = await createUserWithEmailAndPassword(auth, email, pass);
+          _firebaseUser = cred.user;
+          await sendEmailVerification(cred.user);
+
+          // Save account and login directly - verification is optional
+          _pendingUser.emailVerified = false;
+          const users2 = IA.getUsers();
+          users2.push(_pendingUser);
+          IA.saveUsers(users2);
+          IA.setCurrentUser(_pendingUser);
+          
+          // Show verify notice but allow skip
+          document.getElementById('registerForm').classList.add('hidden');
+          document.getElementById('verifyForm').classList.remove('hidden');
+          document.getElementById('verifyMsg').textContent =
+            'Account created! A verification link was sent to ' + email + '. You can verify later or skip for now.';
+          IA.toast('Account created! Welcome, ' + first + '! 🎉', 'success');
+          return;
+        } catch(e) {
+          if (e.code === 'auth/email-already-in-use') {
+            IA.toast('Email already registered. Try signing in.','error'); return;
+          }
+          // Firebase unavailable - allow without verification
+          console.warn('Firebase auth failed, proceeding without verification:', e.message);
+        }
+      }
+
+      // Fallback: create account without email verification
+      _pendingUser.emailVerified = true;
+      users.push(_pendingUser);
+      IA.saveUsers(users);
+      IA.setCurrentUser(_pendingUser);
+      IA.toast('Account created! Welcome, ' + first + '! 🎉','success');
+      setTimeout(() => window.location.href = 'tests.html', 800);
+    }
+
+    async function checkVerified() {
+      const status = document.getElementById('verifyStatus');
+      status.style.display = 'block';
+      status.style.background = 'rgba(79,142,247,0.1)';
+      status.style.color = 'var(--accent)';
+      status.textContent = '⏳ Checking verification status...';
+
+      if (_firebaseUser) {
+        await _firebaseUser.reload();
+        if (_firebaseUser.emailVerified) {
+          _pendingUser.emailVerified = true;
+          const users = IA.getUsers();
+          users.push(_pendingUser);
+          IA.saveUsers(users);
+          IA.setCurrentUser(_pendingUser);
+          IA.toast('Email verified! Welcome, ' + _pendingUser.firstName + '! 🎉', 'success');
+          setTimeout(() => window.location.href = 'tests.html', 800);
+        } else {
+          status.style.background = 'rgba(239,68,68,0.1)';
+          status.style.color = 'var(--red)';
+          status.textContent = '❌ Email not verified yet. Please click the link in your email first.';
+        }
+      }
+    }
+
+    function skipVerification() {
+      // User already saved during registration, just redirect
+      if (IA.getCurrentUser()) {
+        window.location.href = 'tests.html';
+      } else if (_pendingUser) {
+        IA.setCurrentUser(_pendingUser);
+        window.location.href = 'tests.html';
+      } else {
+        showLogin();
+      }
+    }
+
+    async function resendVerification() {
+      if (_firebaseUser) {
+        try {
+          const { sendEmailVerification } = window._baAuthOps;
+          await sendEmailVerification(_firebaseUser);
+          IA.toast('Verification email resent!', 'success');
+        } catch(e) { IA.toast('Could not resend: ' + e.message, 'error'); }
+      }
+    }
+
+    // Enter key support
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        if (!document.getElementById('loginForm').classList.contains('hidden')) doLogin();
+        else doRegister();
+      }
+    });
+  </script>
+</body>
+</html>

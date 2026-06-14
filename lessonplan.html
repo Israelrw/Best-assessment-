@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lesson Plan — Best Assessment</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc }
+      from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+    function initFirebase() {
+      try {
+        const cfg = {
+          apiKey:"AIzaSyAYcGqhjzyVD2vOwRMseT6Q_B_gxtopp_8",
+          authDomain:"israel-assessment.firebaseapp.com",
+          projectId:"israel-assessment",
+          storageBucket:"israel-assessment.firebasestorage.app",
+          messagingSenderId:"859727274810",
+          appId:"1:859727274810:web:ba1269ae2a217bebe8e603"
+        };
+        const app = initializeApp(cfg);
+        const db  = getFirestore(app);
+        if (typeof IA !== 'undefined') {
+          IA._db = db;
+          IA._firestoreOps = async () => ({ collection, doc, setDoc, getDocs, deleteDoc });
+          IA._getFirestore = () => db;
+        }
+        window._baDb = db;
+      } catch(e) {}
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initFirebase);
+    else initFirebase();
+  </script>
+  <style>
+    .lp-section { background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px; }
+    .lp-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+    .lp-grid4 { display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px; }
+    .lp-grid3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px; }
+    .ai-box { background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:10px;padding:14px;margin-bottom:14px; }
+    .phase-header { font-weight:800;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px; }
+    .lp-type-card { border:2px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;text-align:center;transition:all .15s ease;background:var(--surface2,rgba(255,255,255,0.02)); }
+    .lp-type-card:hover { border-color:var(--accent); }
+    .lp-type-card.selected { border-color:var(--accent);background:rgba(99,102,241,0.1);box-shadow:0 0 0 1px var(--accent) inset; }
+    .lp-type-card .lp-type-title { font-weight:800;font-size:15px;margin:8px 0 4px; }
+    .lp-type-card .lp-type-desc { font-size:12px;color:var(--text2); }
+    .lp-badge { display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle; }
+    .lp-badge-regular { background:rgba(99,102,241,0.15);color:#818cf8; }
+    .lp-badge-remedial { background:rgba(244,114,182,0.15);color:#f472b6; }
+    @media(max-width:600px){ .lp-grid2,.lp-grid4,.lp-grid3{grid-template-columns:1fr!important;} }
+  </style>
+</head>
+<body class="admin-page">
+  <div class="bg-grid"></div>
+  <header class="site-header"></header>
+
+  <main style="max-width:900px;margin:0 auto;padding:24px 16px">
+
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 class="page-title">📚 Lesson Plans</h1>
+        <p class="page-sub">AI-powered Rwanda CBC format &nbsp;·&nbsp; <span id="lpUsageText" style="color:var(--accent)"></span></p>
+      </div>
+      <button onclick="showNew()" class="btn btn-primary">+ New Plan</button>
+    </div>
+
+    <!-- ══ CREATE FORM ══ -->
+    <div id="createForm" style="display:none">
+
+      <!-- Step 0: Choose lesson plan type -->
+      <div class="lp-section">
+        <h3 style="margin:0 0 14px;font-size:16px">Step 0 — Choose Lesson Plan Type</h3>
+        <div class="lp-grid2">
+          <div id="typeRegularCard" class="lp-type-card selected" onclick="selectPlanType('regular')">
+            <div style="font-size:28px">📘</div>
+            <div class="lp-type-title">Regular Lesson Plan</div>
+            <div class="lp-type-desc">Standard Rwanda CBC lesson plan with Introduction, Development and Conclusion phases.</div>
+          </div>
+          <div id="typeRemedialCard" class="lp-type-card" onclick="selectPlanType('remedial')">
+            <div style="font-size:28px">🩹</div>
+            <div class="lp-type-title">Remedial Learning Lesson Plan</div>
+            <div class="lp-type-desc">For learners needing remediation, consolidation & extended activities, grouped by ability.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ REGULAR LESSON PLAN FORM ══ -->
+      <div id="regularFormSections">
+
+      <!-- Step 1: Basic Info -->
+      <div class="lp-section">
+        <h3 style="margin:0 0 14px;font-size:16px">Step 1 — Basic Information</h3>
+        <div class="lp-grid2" style="margin-bottom:12px">
+          <div><label class="form-label">School Name</label><input type="text" id="lpSchool" placeholder="e.g. GS MBUGA" class="form-input"/></div>
+          <div><label class="form-label">Teacher's Name</label><input type="text" id="lpTeacher" class="form-input"/></div>
+        </div>
+        <div class="lp-grid4" style="margin-bottom:10px">
+          <div><label class="form-label">Term</label><input type="text" id="lpTerm" placeholder="III" class="form-input"/></div>
+          <div><label class="form-label">Date</label><input type="date" id="lpDate" class="form-input"/></div>
+          <div><label class="form-label">Subject</label><input type="text" id="lpSubject" placeholder="Mathematics" class="form-input"/></div>
+          <div><label class="form-label">Class</label><input type="text" id="lpClass" placeholder="S4MS2" class="form-input"/></div>
+        </div>
+        <div class="lp-grid4" style="margin-bottom:12px">
+          <div><label class="form-label">Unit No</label><input type="text" id="lpUnitNo" placeholder="11" class="form-input"/></div>
+          <div><label class="form-label">Lesson No</label><input type="text" id="lpLessonNo" placeholder="3/4" class="form-input"/></div>
+          <div><label class="form-label">Duration</label><input type="text" id="lpDuration" placeholder="80min" class="form-input"/></div>
+          <div><label class="form-label">Class Size</label><input type="number" id="lpClassSize" placeholder="23" class="form-input"/></div>
+        </div>
+        <div style="margin-bottom:10px"><label class="form-label">Types of Special Educational Needs</label><input type="text" id="lpSEN" placeholder="None" class="form-input"/></div>
+        <div style="margin-bottom:10px"><label class="form-label">Unit Title</label><input type="text" id="lpUnitTitle" placeholder="e.g. LINEAR TRANSFORMATIONS IN 2D" class="form-input"/></div>
+        <div style="margin-bottom:10px"><label class="form-label">Key Unit Competence</label><textarea id="lpCompetence" rows="2" class="form-input" style="resize:vertical" placeholder="e.g. Determine whether a transformation is linear or not..."></textarea></div>
+        <div style="margin-bottom:10px"><label class="form-label">Title of the Lesson</label><input type="text" id="lpTopic" placeholder="e.g. KERNEL AND RANGE OF LINEAR TRANSFORMATION" class="form-input"/></div>
+        <div style="margin-bottom:10px"><label class="form-label">Instructional Objective</label><textarea id="lpObjective" rows="2" class="form-input" style="resize:vertical" placeholder="By using student book, in groups learners will be able to..."></textarea></div>
+        <div style="margin-bottom:10px"><label class="form-label">Plan for This Class</label><input type="text" id="lpPlan" placeholder="Inside class" class="form-input"/></div>
+        <div style="margin-bottom:10px"><label class="form-label">Learning Materials</label><input type="text" id="lpMaterials" placeholder="Student book, Whiteboard, Markers" class="form-input"/></div>
+        <div><label class="form-label">References</label><input type="text" id="lpReferences" placeholder="Mathematics S4 student book, 2020 Rwanda Education Board" class="form-input"/></div>
+      </div>
+
+      <!-- Step 2: AI Generate -->
+      <div class="lp-section">
+        <h3 style="margin:0 0 6px;font-size:16px">Step 2 — Generate Activities with AI ✨</h3>
+        <p style="color:var(--text2);font-size:13px;margin:0 0 14px">AI will generate teacher activities, learner activities, generic competences AND cross cutting issues based on your lesson info.</p>
+        <button onclick="generateWithAI()" id="aiBtn" class="btn" style="width:100%;padding:14px;font-size:15px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700">
+          ✨ Generate with AI
+        </button>
+        <div id="aiStatus" style="display:none;margin-top:12px;text-align:center;padding:10px;border-radius:8px;font-size:13px"></div>
+      </div>
+
+      <!-- Step 3: Review & Edit AI Output -->
+      <div id="aiSections" style="display:none">
+        <div class="lp-section">
+          <h3 style="margin:0 0 6px;font-size:16px">Step 3 — Review & Edit</h3>
+          <p style="color:var(--text2);font-size:13px;margin:0 0 14px">All fields are editable. Make any changes needed before saving.</p>
+
+          <!-- INTRODUCTION -->
+          <div class="ai-box">
+            <div class="phase-header"><span style="color:#60a5fa">🔵 INTRODUCTION</span>
+              <input type="text" id="lpIntroTime" placeholder="e.g. 10 minutes" class="form-input" style="width:140px;margin-left:auto"/>
+            </div>
+            <div class="lp-grid3">
+              <div><label class="form-label">Teacher Activities</label><textarea id="lpIntroTeacher" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+              <div><label class="form-label">Learner Activities</label><textarea id="lpIntroLearner" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+              <div><label class="form-label">Generic Competences & Cross Cutting Issues</label><textarea id="lpIntroCC" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+            </div>
+          </div>
+
+          <!-- DEVELOPMENT -->
+          <div class="ai-box">
+            <div class="phase-header"><span style="color:#34d399">🟢 DEVELOPMENT</span>
+              <input type="text" id="lpDevTime" placeholder="e.g. 20min" class="form-input" style="width:140px;margin-left:auto"/>
+            </div>
+            <div class="lp-grid3">
+              <div><label class="form-label">Teacher Activities</label><textarea id="lpDevTeacher" rows="8" class="form-input" style="resize:vertical"></textarea></div>
+              <div><label class="form-label">Learner Activities</label><textarea id="lpDevLearner" rows="8" class="form-input" style="resize:vertical"></textarea></div>
+              <div><label class="form-label">Generic Competences & Cross Cutting Issues</label><textarea id="lpDevCC" rows="8" class="form-input" style="resize:vertical"></textarea></div>
+            </div>
+          </div>
+
+          <!-- CONCLUSION -->
+          <div class="ai-box">
+            <div class="phase-header"><span style="color:#fbbf24">🟡 CONCLUSION</span>
+              <input type="text" id="lpConcTime" placeholder="e.g. 10 minutes" class="form-input" style="width:140px;margin-left:auto"/>
+            </div>
+            <div class="lp-grid3">
+              <div><label class="form-label">Teacher Activities</label><textarea id="lpConcTeacher" rows="5" class="form-input" style="resize:vertical"></textarea></div>
+              <div><label class="form-label">Learner Activities</label><textarea id="lpConcLearner" rows="5" class="form-input" style="resize:vertical"></textarea></div>
+              <div><label class="form-label">Generic Competences & Cross Cutting Issues</label><textarea id="lpConcCC" rows="5" class="form-input" style="resize:vertical"></textarea></div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:14px"><label class="form-label">Teacher Self Evaluation</label><input type="text" id="lpEvaluation" class="form-input" value="Done"/></div>
+          <div style="margin-bottom:14px"><label class="form-label">Student Evaluation / Assessment</label><textarea id="lpStudentEval" rows="2" class="form-input" placeholder="How will students be assessed? e.g. Quiz, observation, exit ticket..."></textarea></div>
+          <div style="margin-bottom:14px"><label class="form-label">Homework / Assignment</label><textarea id="lpHomework" rows="2" class="form-input" placeholder="Homework or assignment given to students..."></textarea></div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button onclick="savePlan()" class="btn btn-primary" style="flex:1">💾 Save Plan</button>
+            <button onclick="cancelForm()" class="btn btn-secondary">Cancel</button>
+          </div>
+        </div>
+      </div>
+      </div><!-- /regularFormSections -->
+
+      <!-- ══ REMEDIAL LESSON PLAN FORM ══ -->
+      <div id="remedialFormSections" style="display:none">
+
+        <!-- Step 1: General Information -->
+        <div class="lp-section">
+          <h3 style="margin:0 0 14px;font-size:16px">Step 1 — General Information</h3>
+          <div class="lp-grid2" style="margin-bottom:12px">
+            <div><label class="form-label">School Name</label><input type="text" id="remSchool" placeholder="e.g. GS Buhoro Methodist" class="form-input"/></div>
+            <div><label class="form-label">Teacher's Name</label><input type="text" id="remTeacher" class="form-input"/></div>
+          </div>
+          <div class="lp-grid4" style="margin-bottom:10px">
+            <div><label class="form-label">Subject</label><input type="text" id="remSubject" placeholder="Chemistry" class="form-input"/></div>
+            <div><label class="form-label">Class</label><input type="text" id="remClass" placeholder="S3" class="form-input"/></div>
+            <div><label class="form-label">Period</label><input type="text" id="remPeriod" placeholder="3rd period" class="form-input"/></div>
+            <div><label class="form-label">Date</label><input type="date" id="remDate" class="form-input"/></div>
+          </div>
+          <div style="margin-bottom:12px"><label class="form-label">Lesson Title</label><input type="text" id="remLessonTitle" placeholder="e.g. Inorganic salts and their properties" class="form-input"/></div>
+          <div class="lp-grid3" style="margin-bottom:6px">
+            <div><label class="form-label"># Learners needing Remediation</label><input type="number" id="remNumRemediation" placeholder="12" class="form-input"/></div>
+            <div><label class="form-label"># Learners needing Consolidation</label><input type="number" id="remNumConsolidation" placeholder="10" class="form-input"/></div>
+            <div><label class="form-label"># Learners needing Extended activities</label><input type="number" id="remNumExtended" placeholder="10" class="form-input"/></div>
+          </div>
+        </div>
+
+        <!-- Step 2: AI Generate -->
+        <div class="lp-section">
+          <h3 style="margin:0 0 6px;font-size:16px">Step 2 — Generate Remedial Plan with AI ✨</h3>
+          <p style="color:var(--text2);font-size:13px;margin:0 0 14px">AI will generate identified problems, remedial activities, assessment steps, learning aids, group objectives, and consolidation/extended activities based on your lesson info.</p>
+          <button onclick="generateRemedialWithAI()" id="remAiBtn" class="btn" style="width:100%;padding:14px;font-size:15px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700">
+            ✨ Generate with AI
+          </button>
+          <div id="remAiStatus" style="display:none;margin-top:12px;text-align:center;padding:10px;border-radius:8px;font-size:13px"></div>
+        </div>
+
+        <!-- Step 3: Review & Edit -->
+        <div id="remAiSections" style="display:none">
+          <div class="lp-section">
+            <h3 style="margin:0 0 6px;font-size:16px">Step 3 — Review & Edit</h3>
+            <p style="color:var(--text2);font-size:13px;margin:0 0 14px">All fields are editable. Make any changes needed before saving.</p>
+
+            <h4 style="margin:0 0 8px;font-size:13px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">B. Identified groups of struggling learners</h4>
+            <div style="margin-bottom:10px"><label class="form-label">Group 1 objective (Remediation)</label><textarea id="remGroup1Obj" rows="2" class="form-input" style="resize:vertical"></textarea></div>
+            <div style="margin-bottom:10px"><label class="form-label">Group 2 objective (Consolidation)</label><textarea id="remGroup2Obj" rows="2" class="form-input" style="resize:vertical"></textarea></div>
+            <div style="margin-bottom:14px"><label class="form-label">Group 3 objective (Extended)</label><textarea id="remGroup3Obj" rows="2" class="form-input" style="resize:vertical"></textarea></div>
+
+            <h4 style="margin:14px 0 8px;font-size:13px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">C. Identified problems, remedial activities & learning aids</h4>
+            <div class="lp-grid2" style="margin-bottom:10px">
+              <div><label class="form-label">Identified Problems</label><textarea id="remProblems" rows="6" class="form-input" style="resize:vertical" placeholder="• one problem per line"></textarea></div>
+              <div><label class="form-label">Remedial Activities</label><textarea id="remActivities" rows="6" class="form-input" style="resize:vertical" placeholder="• Activity 1: ..."></textarea></div>
+            </div>
+            <div class="lp-grid2" style="margin-bottom:14px">
+              <div><label class="form-label">Steps Including Assessment</label><textarea id="remSteps" rows="6" class="form-input" style="resize:vertical" placeholder="• Step 1: ..."></textarea></div>
+              <div><label class="form-label">Teaching & Learning Aids</label><textarea id="remAids" rows="6" class="form-input" style="resize:vertical" placeholder="• Flashcards, samples, ..."></textarea></div>
+            </div>
+
+            <h4 style="margin:14px 0 8px;font-size:13px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">D. Consolidation & Extended activities for other learners</h4>
+            <div style="margin-bottom:14px"><label class="form-label">Description of these learners (consolidation & extended group)</label><textarea id="remOtherLearners" rows="2" class="form-input" style="resize:vertical" placeholder="These learners are advanced and..."></textarea></div>
+            <div class="lp-grid3" style="margin-bottom:10px">
+              <div><label class="form-label">Consolidation Activities</label><textarea id="remConsActivities" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+              <div><label class="form-label">Consolidation Methodology</label><textarea id="remConsMethod" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+              <div><label class="form-label">Consolidation Learning Aids</label><textarea id="remConsAids" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+            </div>
+            <div class="lp-grid3" style="margin-bottom:14px">
+              <div><label class="form-label">Extended Activities</label><textarea id="remExtActivities" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+              <div><label class="form-label">Extended Methodology</label><textarea id="remExtMethod" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+              <div><label class="form-label">Extended Learning Aids</label><textarea id="remExtAids" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button onclick="savePlan()" class="btn btn-primary" style="flex:1">💾 Save Plan</button>
+              <button onclick="cancelForm()" class="btn btn-secondary">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /remedialFormSections -->
+    </div>
+
+
+    <!-- ══ EDIT FORM ══ -->
+    <div id="editForm" style="display:none">
+      <div class="lp-section">
+        <h3 style="margin:0 0 14px">✏️ Edit Lesson Plan</h3>
+        <input type="hidden" id="editId"/>
+        <div class="lp-grid2" style="margin-bottom:12px">
+          <div><label class="form-label">School Name</label><input type="text" id="editSchool" class="form-input"/></div>
+          <div><label class="form-label">Teacher's Name</label><input type="text" id="editTeacher" class="form-input"/></div>
+        </div>
+        <div class="lp-grid4" style="margin-bottom:10px">
+          <div><label class="form-label">Term</label><input type="text" id="editTerm" class="form-input"/></div>
+          <div><label class="form-label">Date</label><input type="date" id="editDate" class="form-input"/></div>
+          <div><label class="form-label">Subject</label><input type="text" id="editSubject" class="form-input"/></div>
+          <div><label class="form-label">Class</label><input type="text" id="editClass" class="form-input"/></div>
+        </div>
+        <div class="lp-grid4" style="margin-bottom:12px">
+          <div><label class="form-label">Unit No</label><input type="text" id="editUnitNo" class="form-input"/></div>
+          <div><label class="form-label">Lesson No</label><input type="text" id="editLessonNo" class="form-input"/></div>
+          <div><label class="form-label">Duration</label><input type="text" id="editDuration" class="form-input"/></div>
+          <div><label class="form-label">Class Size</label><input type="number" id="editClassSize" class="form-input"/></div>
+        </div>
+        <div style="margin-bottom:10px"><label class="form-label">Special Educational Needs</label><input type="text" id="editSEN" class="form-input"/></div>
+        <div style="margin-bottom:10px"><label class="form-label">Unit Title</label><input type="text" id="editUnitTitle" class="form-input"/></div>
+        <div style="margin-bottom:10px"><label class="form-label">Key Unit Competence</label><textarea id="editCompetence" rows="2" class="form-input" style="resize:vertical"></textarea></div>
+        <div style="margin-bottom:10px"><label class="form-label">Title of the Lesson</label><input type="text" id="editTopic" class="form-input"/></div>
+        <div style="margin-bottom:10px"><label class="form-label">Instructional Objective</label><textarea id="editObjective" rows="2" class="form-input" style="resize:vertical"></textarea></div>
+        <div style="margin-bottom:10px"><label class="form-label">Plan for This Class</label><input type="text" id="editPlan" class="form-input"/></div>
+        <div style="margin-bottom:10px"><label class="form-label">Learning Materials</label><input type="text" id="editMaterials" class="form-input"/></div>
+        <div style="margin-bottom:14px"><label class="form-label">References</label><input type="text" id="editReferences" class="form-input"/></div>
+
+        <!-- INTRODUCTION -->
+        <div class="ai-box">
+          <div class="phase-header"><span style="color:#60a5fa">🔵 INTRODUCTION</span>
+            <input type="text" id="editIntroTime" class="form-input" style="width:140px;margin-left:auto"/>
+          </div>
+          <div class="lp-grid3">
+            <div><label class="form-label">Teacher Activities</label><textarea id="editIntroTeacher" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+            <div><label class="form-label">Learner Activities</label><textarea id="editIntroLearner" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+            <div><label class="form-label">Generic Competences & Cross Cutting Issues</label><textarea id="editIntroCC" rows="6" class="form-input" style="resize:vertical"></textarea></div>
+          </div>
+        </div>
+        <!-- DEVELOPMENT -->
+        <div class="ai-box">
+          <div class="phase-header"><span style="color:#34d399">🟢 DEVELOPMENT</span>
+            <input type="text" id="editDevTime" class="form-input" style="width:140px;margin-left:auto"/>
+          </div>
+          <div class="lp-grid3">
+            <div><label class="form-label">Teacher Activities</label><textarea id="editDevTeacher" rows="8" class="form-input" style="resize:vertical"></textarea></div>
+            <div><label class="form-label">Learner Activities</label><textarea id="editDevLearner" rows="8" class="form-input" style="resize:vertical"></textarea></div>
+            <div><label class="form-label">Generic Competences & Cross Cutting Issues</label><textarea id="editDevCC" rows="8" class="form-input" style="resize:vertical"></textarea></div>
+          </div>
+        </div>
+        <!-- CONCLUSION -->
+        <div class="ai-box">
+          <div class="phase-header"><span style="color:#fbbf24">🟡 CONCLUSION</span>
+            <input type="text" id="editConcTime" class="form-input" style="width:140px;margin-left:auto"/>
+          </div>
+          <div class="lp-grid3">
+            <div><label class="form-label">Teacher Activities</label><textarea id="editConcTeacher" rows="5" class="form-input" style="resize:vertical"></textarea></div>
+            <div><label class="form-label">Learner Activities</label><textarea id="editConcLearner" rows="5" class="form-input" style="resize:vertical"></textarea></div>
+            <div><label class="form-label">Generic Competences & Cross Cutting Issues</label><textarea id="editConcCC" rows="5" class="form-input" style="resize:vertical"></textarea></div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px"><label class="form-label">Teacher Self Evaluation</label><input type="text" id="editEvaluation" class="form-input"/></div>
+        <div style="margin-bottom:14px"><label class="form-label">Student Evaluation / Assessment</label><textarea id="editStudentEval" rows="2" class="form-input"></textarea></div>
+        <div style="margin-bottom:14px"><label class="form-label">Homework / Assignment</label><textarea id="editHomework" rows="2" class="form-input"></textarea></div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button onclick="saveEdit()" class="btn btn-primary" style="flex:1">💾 Save Changes</button>
+          <button onclick="cancelEdit()" class="btn btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PLANS LIST ══ -->
+    <div id="plansContainer">
+      <div style="text-align:center;padding:40px;color:var(--text2)">⏳ Loading plans...</div>
+    </div>
+  </main>
+
+  <!-- ══ PDF PREVIEW / DOWNLOAD MODAL ══ -->
+  <div id="pdfModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:var(--surface,#1e293b);border-radius:14px;padding:14px;max-width:700px;width:100%;max-height:90vh;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <strong style="font-size:14px">📄 Your Lesson Plan PDF</strong>
+        <button onclick="closePdfModal()" class="btn btn-secondary btn-sm">✕ Close</button>
+      </div>
+      <iframe id="pdfModalFrame" style="flex:1;width:100%;min-height:60vh;border:none;border-radius:8px;background:#fff"></iframe>
+      <a id="pdfModalDownload" href="#" class="btn btn-primary" style="text-align:center" download="lesson-plan.pdf">⬇️ Download PDF</a>
+      <p style="font-size:12px;color:var(--text2);margin:0;text-align:center">If the download didn't start automatically, tap "Download PDF" above.</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="nav.js"></script>
+  <script>
+    const user = IA.requireAuth();
+    if (!user) throw new Error('Not logged in');
+    buildNav('lessonplan');
+
+    document.getElementById('lpTeacher').value = user.firstName + ' ' + user.lastName;
+    document.getElementById('lpDate').value = new Date().toISOString().split('T')[0];
+
+    let plans = [];
+    let currentPlanType = 'regular';
+    let editingPlanId = null;
+
+
+
+    function selectPlanType(type) {
+      currentPlanType = type;
+      document.getElementById('typeRegularCard').classList.toggle('selected', type === 'regular');
+      document.getElementById('typeRemedialCard').classList.toggle('selected', type === 'remedial');
+      document.getElementById('regularFormSections').style.display = type === 'regular' ? 'block' : 'none';
+      document.getElementById('remedialFormSections').style.display = type === 'remedial' ? 'block' : 'none';
+    }
+
+    function showNew() {
+      editingPlanId = null;
+      selectPlanType('regular');
+      document.getElementById('createForm').style.display = 'block';
+      document.getElementById('editForm').style.display = 'none';
+      document.getElementById('plansContainer').style.display = 'none';
+      document.getElementById('createForm').scrollIntoView({behavior:'smooth'});
+    }
+    function cancelForm() {
+      editingPlanId = null;
+      document.getElementById('createForm').style.display = 'none';
+      document.getElementById('aiSections').style.display = 'none';
+      document.getElementById('remAiSections').style.display = 'none';
+      document.getElementById('plansContainer').style.display = 'block';
+    }
+    function cancelEdit() {
+      document.getElementById('editForm').style.display = 'none';
+      document.getElementById('plansContainer').style.display = 'block';
+    }
+
+    function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
+    function set(id, v) { const el = document.getElementById(id); if (el) el.value = v || ''; }
+
+    async function generateWithAI() {
+      const subject    = val('lpSubject');
+      const topic      = val('lpTopic');
+      const objective  = val('lpObjective');
+      const competence = val('lpCompetence');
+      const unitTitle  = val('lpUnitTitle');
+      const materials  = val('lpMaterials');
+      const duration   = val('lpDuration') || '80min';
+      const className  = val('lpClass');
+
+      if (!subject || !topic) { IA.toast('Please enter Subject and Lesson Title first', 'error'); return; }
+
+      const btn = document.getElementById('aiBtn');
+      const status = document.getElementById('aiStatus');
+      btn.disabled = true;
+      btn.textContent = '⏳ AI is generating your lesson plan...';
+      status.style.display = 'block';
+      status.style.background = 'rgba(99,102,241,0.1)';
+      status.style.color = 'var(--accent)';
+      status.textContent = '🤖 Generating teacher activities, learner activities, generic competences and cross cutting issues...';
+
+      // Detect language subject
+      const langSubject = subject.toLowerCase();
+      const isKinyarwanda = langSubject.includes('kinyarwanda');
+      const isFrench = langSubject.includes('french') || langSubject.includes('français');
+      const isKiswahili = langSubject.includes('kiswahili') || langSubject.includes('swahili');
+      const isLanguageSubject = isKinyarwanda || isFrench || isKiswahili;
+
+      // Language instruction for the AI
+      const langInstruction = isKinyarwanda
+        ? `IMPORTANT: This is a Kinyarwanda lesson. Write ALL content of the lesson plan (teacher activities, learner activities, generic competences, cross-cutting issues) ENTIRELY IN KINYARWANDA. Do not use any English or French.`
+        : isFrench
+        ? `IMPORTANT: This is a French lesson. Write ALL content of the lesson plan (teacher activities, learner activities, generic competences, cross-cutting issues) ENTIRELY IN FRENCH. Do not use any English or Kinyarwanda.`
+        : isKiswahili
+        ? `IMPORTANT: This is a Kiswahili lesson. Write ALL content of the lesson plan (teacher activities, learner activities, generic competences, cross-cutting issues) ENTIRELY IN KISWAHILI. Do not use any English or Kinyarwanda.`
+        : `IMPORTANT: All classroom discussion, group work, presentations and learner activities must be conducted ONLY IN ENGLISH. Do not mention Kinyarwanda as the discussion language.`;
+
+      const prompt = `You are an expert Rwanda secondary school teacher writing a CBC (Competence Based Curriculum) lesson plan.
+
+Lesson Details:
+- Subject: ${subject}
+- Class: ${className}
+- Lesson Title: ${topic}
+- Unit Title: ${unitTitle}
+- Key Unit Competence: ${competence}
+- Instructional Objective: ${objective}
+- Learning Materials: ${materials}
+- Duration: ${duration}
+
+${langInstruction}
+
+Rwanda CBC Generic Competences (use relevant ones):
+1. Critical thinking and problem solving
+2. Creativity and innovation
+3. Communication in both Kinyarwanda and foreign languages
+4. Cooperation and interpersonal management and life skills
+5. Research and problem solving
+6. Lifelong learning
+
+Rwanda CBC Cross Cutting Issues (use relevant ones):
+1. Gender: equal participation of boys and girls
+2. Inclusive education: accommodating learners with special needs
+3. Environment and sustainability
+4. Peace and values education
+5. Standardization culture
+6. Financial education
+
+STRICT SECTION RULES:
+
+INTRODUCTION: Teacher greets learners, reviews prior knowledge, introduces the topic and states the learning objective.
+
+DEVELOPMENT (follow this exact sequence):
+1. Teacher organizes learners into groups and assigns each group a specific task on ${topic}.
+2. Groups research, discuss and prepare findings.
+3. Each group presents findings to the class.
+4. Teacher harmonizes findings: summarizes key points, corrects misconceptions, reinforces main concepts.
+
+CONCLUSION (must include both):
+1. Teacher conducts student EVALUATION (oral questions, quiz, or exit ticket) to check if learners achieved the objective.
+2. Teacher assigns HOMEWORK to reinforce the lesson.
+
+In "Generic Competences & Cross Cutting Issues": combine both, one per line with short explanation of how it applies.
+
+Return ONLY valid JSON, no markdown:
+{
+  "introTime": "10 minutes",
+  "introTeacher": "numbered steps teacher does in introduction for ${topic}",
+  "introLearner": "numbered steps learners do in introduction for ${topic}",
+  "introCC": "Self-confidence: learners share prior knowledge.\nCommunication: discussion in groups.\nGender: equal participation encouraged.",
+  "devTime": "60 minutes",
+  "devTeacher": "1. Organize learners into groups of 4-5 and assign each group a specific aspect of ${topic} to investigate.\n2. Circulate among groups providing guidance.\n3. Invite each group to present findings to the class.\n4. Harmonize findings: summarize key points, correct misconceptions, reinforce core concepts of ${topic}.",
+  "devLearner": "1. Form groups and discuss the assigned aspect of ${topic} in English.\n2. Prepare a summary of findings for presentation.\n3. Present group findings to the class in English.\n4. Listen to other groups and take notes.\n5. Record the teacher's harmonized key concepts.",
+  "devCC": "Critical thinking: learners analyze ${topic} and draw conclusions.\nCooperation: group work builds teamwork.\nCommunication: presentations develop oral expression.\nInclusive education: mixed ability groups ensure all participate.",
+  "concTime": "10 minutes",
+  "concTeacher": "1. Ask oral questions or give short quiz to evaluate if learners achieved the objective on ${topic}.\n2. Give feedback and correct remaining misconceptions.\n3. Assign homework on ${topic} to be submitted next lesson.",
+  "concLearner": "1. Answer evaluation questions or complete short assessment.\n2. Write homework assignment in exercise books.",
+  "concCC": "Communication: answering questions consolidates understanding.\nLifelong learning: homework encourages independent study.\nResearch: assignment promotes further investigation of ${topic}."
+}`;
+
+      try {
+        // Using OpenRouter free models
+        const MODELS = [
+          'mistralai/mistral-small-3.2-24b-instruct:free',
+          'deepseek/deepseek-r1-0528:free',
+          'amazon/nova-lite-v1:free',
+          'nousresearch/hermes-3-llama-3.1-405b:free',
+          'openrouter/auto'
+        ];
+        let text = null;
+        let lastErr = '';
+        for (const model of MODELS) {
+          try {
+            const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer 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',
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'Best Assessment Lesson Plan'
+              },
+              body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens: 3000 })
+            });
+            const d = await resp.json();
+            if (d.error) { lastErr = d.error.message || JSON.stringify(d.error); continue; }
+            text = d.choices[0].message.content;
+            break;
+          } catch(e) { lastErr = e.message; continue; }
+        }
+        if (!text) throw new Error('All models failed: ' + lastErr);
+        // Robust JSON extraction and cleaning
+        let clean = text;
+        // Extract JSON object
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) clean = jsonMatch[0];
+        else clean = text.replace(/```json|```/g, '').trim();
+
+        // Clean bad control characters (newlines inside strings, tabs, etc.)
+        clean = clean
+          .replace(/\r\n/g, '\\n')
+          .replace(/\r/g, '\\n')
+          .replace(/(?<=[^\\])\n(?=[^"]*(":))/g, '\\n')
+          .replace(/[\x00-\x1F\x7F](?=[^"]*")/g, ' ');
+
+        // More aggressive: replace all literal newlines inside JSON string values
+        clean = clean.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (match) => {
+          return match.replace(/\n/g, '\\n').replace(/\t/g, '\\t');
+        });
+
+        let ai;
+        try {
+          ai = JSON.parse(clean);
+        } catch(parseErr) {
+          // Last resort: extract each field manually
+          const extract = (key) => {
+            const m = text.match(new RegExp('"' + key + '"\s*:\s*"([\s\S]*?)"(?=\s*,\s*"|\s*\})'));
+            return m ? m[1].replace(/\n/g, '\n') : '';
+          };
+          ai = {
+            introTime: extract('introTime') || '10 minutes',
+            introTeacher: extract('introTeacher'),
+            introLearner: extract('introLearner'),
+            introCC: extract('introCC'),
+            devTime: extract('devTime') || '20min',
+            devTeacher: extract('devTeacher'),
+            devLearner: extract('devLearner'),
+            devCC: extract('devCC'),
+            concTime: extract('concTime') || '10 minutes',
+            concTeacher: extract('concTeacher'),
+            concLearner: extract('concLearner'),
+            concCC: extract('concCC')
+          };
+          if (!ai.introTeacher && !ai.devTeacher) throw new Error('JSON parse failed: ' + parseErr.message);
+        }
+
+        const toStr = v => String(v == null ? '' : (Array.isArray(v) ? v.join('\n') : v));
+        set('lpIntroTime',    toStr(ai.introTime));
+        set('lpIntroTeacher', toStr(ai.introTeacher));
+        set('lpIntroLearner', toStr(ai.introLearner));
+        set('lpIntroCC',      toStr(ai.introCC));
+        set('lpDevTime',      toStr(ai.devTime));
+        set('lpDevTeacher',   toStr(ai.devTeacher));
+        set('lpDevLearner',   toStr(ai.devLearner));
+        set('lpDevCC',        toStr(ai.devCC));
+        set('lpConcTime',     toStr(ai.concTime));
+        set('lpConcTeacher',  toStr(ai.concTeacher));
+        set('lpConcLearner',  toStr(ai.concLearner));
+        set('lpConcCC',       toStr(ai.concCC));
+
+        document.getElementById('aiSections').style.display = 'block';
+        document.getElementById('aiSections').scrollIntoView({behavior:'smooth'});
+        status.style.background = 'rgba(34,197,94,0.1)';
+        status.style.color = 'var(--green)';
+        status.textContent = '✅ Done! Review all fields and edit if needed, then Save Plan.';
+
+      } catch(e) {
+        console.error(e);
+        status.style.background = 'rgba(239,68,68,0.1)';
+        status.style.color = 'var(--red)';
+        status.textContent = '❌ Error: ' + (e.message || e.toString());
+      }
+
+      btn.disabled = false;
+      btn.textContent = '✨ Regenerate with AI';
+    }
+
+    async function generateRemedialWithAI() {
+      const subject      = val('remSubject');
+      const lessonTitle  = val('remLessonTitle');
+      const className    = val('remClass');
+      const numRem       = val('remNumRemediation') || '0';
+      const numCons      = val('remNumConsolidation') || '0';
+      const numExt       = val('remNumExtended') || '0';
+
+      if (!subject || !lessonTitle) { IA.toast('Please enter Subject and Lesson Title first', 'error'); return; }
+
+      const btn = document.getElementById('remAiBtn');
+      const status = document.getElementById('remAiStatus');
+      btn.disabled = true;
+      btn.textContent = '⏳ AI is generating your remedial plan...';
+      status.style.display = 'block';
+      status.style.background = 'rgba(99,102,241,0.1)';
+      status.style.color = 'var(--accent)';
+      status.textContent = '🤖 Generating identified problems, remedial activities, group objectives and consolidation/extended activities...';
+
+      // Detect language subject for remedial plan
+      const remLangSubject = subject.toLowerCase();
+      const remIsKinyarwanda = remLangSubject.includes('kinyarwanda');
+      const remIsFrench = remLangSubject.includes('french') || remLangSubject.includes('français');
+      const remIsKiswahili = remLangSubject.includes('kiswahili') || remLangSubject.includes('swahili');
+
+      const remLangInstruction = remIsKinyarwanda
+        ? `IMPORTANT: This is a Kinyarwanda lesson. Write ALL content ENTIRELY IN KINYARWANDA. Do not use English or French.`
+        : remIsFrench
+        ? `IMPORTANT: This is a French lesson. Write ALL content ENTIRELY IN FRENCH. Do not use English or Kinyarwanda.`
+        : remIsKiswahili
+        ? `IMPORTANT: This is a Kiswahili lesson. Write ALL content ENTIRELY IN KISWAHILI. Do not use English or Kinyarwanda.`
+        : `IMPORTANT: All activities, discussions and learner tasks must be conducted ONLY IN ENGLISH.`;
+
+      const prompt = `You are an expert Rwanda secondary school teacher writing a REMEDIAL LEARNING LESSON PLAN.
+
+Lesson Details:
+- Subject: ${subject}
+- Class: ${className}
+- Lesson Title: ${lessonTitle}
+- Number of learners needing remediation: ${numRem}
+- Number of learners needing consolidation: ${numCons}
+- Number of learners needing extended activities: ${numExt}
+
+${remLangInstruction}
+
+Return ONLY valid JSON (no markdown, no explanation) with this exact shape:
+{
+  "group1Obj": "Group 1 (slow learners needing remediation): objective sentence describing how, using which method/aid, they will achieve a specific competence related to ${lessonTitle}",
+  "group2Obj": "Group 2 (learners needing consolidation): objective sentence describing how, using which method, they will deepen understanding of ${lessonTitle}",
+  "group3Obj": "Group 3 (learners needing extended activities): objective sentence describing how advanced learners will extend their knowledge of ${lessonTitle}",
+  "problems": "bullet list (one per line, starting with •) of specific difficulties learners have with ${lessonTitle}",
+  "activities": "bullet list (one per line, starting with • Activity N:) of remedial activities that directly address each identified problem for ${lessonTitle}",
+  "steps": "bullet list (one per line, starting with • Step N:) describing how the teacher implements the remedial activities and assesses learners",
+  "aids": "bullet list (one per line, starting with •) of teaching and learning aids needed for the remedial activities",
+  "otherLearners": "1-2 sentence description of the consolidation/extended group's ability level for ${lessonTitle}",
+  "consActivities": "bullet list (one per line, starting with • Activity N:) of consolidation activities for learners who already grasp ${lessonTitle}",
+  "consMethod": "1-2 sentences describing the methodology used for the consolidation activities (group work, peer learning, etc.)",
+  "consAids": "bullet list (one per line, starting with •) of learning aids for the consolidation activities",
+  "extActivities": "bullet list (one per line, starting with • Activity N:) of extended/enrichment activities for advanced learners about ${lessonTitle}",
+  "extMethod": "1-2 sentences describing the methodology used for the extended activities (research, project-based learning, etc.)",
+  "extAids": "bullet list (one per line, starting with •) of learning aids for the extended activities"
+}`;
+
+      try {
+        // Using OpenRouter free models
+        const MODELS = [
+          'mistralai/mistral-small-3.2-24b-instruct:free',
+          'deepseek/deepseek-r1-0528:free',
+          'amazon/nova-lite-v1:free',
+          'nousresearch/hermes-3-llama-3.1-405b:free',
+          'openrouter/auto'
+        ];
+        let text = null;
+        let lastErr = '';
+        for (const model of MODELS) {
+          try {
+            const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer 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',
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'Best Assessment Lesson Plan'
+              },
+              body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens: 3000 })
+            });
+            const d = await resp.json();
+            if (d.error) { lastErr = d.error.message || JSON.stringify(d.error); continue; }
+            text = d.choices[0].message.content;
+            break;
+          } catch(e) { lastErr = e.message; continue; }
+        }
+        if (!text) throw new Error('All models failed: ' + lastErr);
+
+        let clean = text;
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) clean = jsonMatch[0];
+        else clean = text.replace(/```json|```/g, '').trim();
+
+        clean = clean
+          .replace(/\r\n/g, '\\n')
+          .replace(/\r/g, '\\n')
+          .replace(/(?<=[^\\])\n(?=[^"]*(":))/g, '\\n')
+          .replace(/[\x00-\x1F\x7F](?=[^"]*")/g, ' ');
+
+        clean = clean.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (match) => {
+          return match.replace(/\n/g, '\\n').replace(/\t/g, '\\t');
+        });
+
+        let ai;
+        try {
+          ai = JSON.parse(clean);
+        } catch(parseErr) {
+          const extract = (key) => {
+            const m = text.match(new RegExp('"' + key + '"\\s*:\\s*"([\\s\\S]*?)"(?=\\s*,\\s*"|\\s*\\})'));
+            return m ? m[1].replace(/\\n/g, '\n') : '';
+          };
+          ai = {
+            group1Obj: extract('group1Obj'), group2Obj: extract('group2Obj'), group3Obj: extract('group3Obj'),
+            problems: extract('problems'), activities: extract('activities'), steps: extract('steps'), aids: extract('aids'),
+            otherLearners: extract('otherLearners'),
+            consActivities: extract('consActivities'), consMethod: extract('consMethod'), consAids: extract('consAids'),
+            extActivities: extract('extActivities'), extMethod: extract('extMethod'), extAids: extract('extAids')
+          };
+          if (!ai.problems && !ai.activities) throw new Error('JSON parse failed: ' + parseErr.message);
+        }
+
+        const cleanNL = s => String(s == null ? '' : (Array.isArray(s) ? s.join('\n') : s)).replace(/\\n/g, '\n');
+        set('remGroup1Obj', cleanNL(ai.group1Obj));
+        set('remGroup2Obj', cleanNL(ai.group2Obj));
+        set('remGroup3Obj', cleanNL(ai.group3Obj));
+        set('remProblems', cleanNL(ai.problems));
+        set('remActivities', cleanNL(ai.activities));
+        set('remSteps', cleanNL(ai.steps));
+        set('remAids', cleanNL(ai.aids));
+        set('remOtherLearners', cleanNL(ai.otherLearners));
+        set('remConsActivities', cleanNL(ai.consActivities));
+        set('remConsMethod', cleanNL(ai.consMethod));
+        set('remConsAids', cleanNL(ai.consAids));
+        set('remExtActivities', cleanNL(ai.extActivities));
+        set('remExtMethod', cleanNL(ai.extMethod));
+        set('remExtAids', cleanNL(ai.extAids));
+
+        document.getElementById('remAiSections').style.display = 'block';
+        document.getElementById('remAiSections').scrollIntoView({behavior:'smooth'});
+        status.style.background = 'rgba(34,197,94,0.1)';
+        status.style.color = 'var(--green)';
+        status.textContent = '✅ Done! Review all fields and edit if needed, then Save Plan.';
+
+      } catch(e) {
+        console.error(e);
+        status.style.background = 'rgba(239,68,68,0.1)';
+        status.style.color = 'var(--red)';
+        status.textContent = '❌ Error: ' + (e.message || e.toString());
+      }
+
+      btn.disabled = false;
+      btn.textContent = '✨ Regenerate with AI';
+    }
+
+    function collectPlan(prefix, existingId) {
+      return {
+        id: existingId || ('lp_' + Date.now()),
+        ownerId: user.id,
+        planType: 'regular',
+        createdAt: existingId ? undefined : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        school:     val(prefix+'School'),    teacher:    val(prefix+'Teacher'),
+        term:       val(prefix+'Term'),      date:       val(prefix+'Date'),
+        subject:    val(prefix+'Subject'),   className:  val(prefix+'Class'),
+        unitNo:     val(prefix+'UnitNo'),    lessonNo:   val(prefix+'LessonNo'),
+        duration:   val(prefix+'Duration'),  classSize:  val(prefix+'ClassSize'),
+        sen:        val(prefix+'SEN'),       unitTitle:  val(prefix+'UnitTitle'),
+        competence: val(prefix+'Competence'),topic:      val(prefix+'Topic'),
+        objective:  val(prefix+'Objective'), plan:       val(prefix+'Plan'),
+        materials:  val(prefix+'Materials'), references: val(prefix+'References'),
+        introTime:  val(prefix+'IntroTime'), introTeacher:val(prefix+'IntroTeacher'),
+        introLearner:val(prefix+'IntroLearner'),introCC: val(prefix+'IntroCC'),
+        devTime:    val(prefix+'DevTime'),   devTeacher: val(prefix+'DevTeacher'),
+        devLearner: val(prefix+'DevLearner'),devCC:      val(prefix+'DevCC'),
+        concTime:   val(prefix+'ConcTime'),  concTeacher:val(prefix+'ConcTeacher'),
+        concLearner:val(prefix+'ConcLearner'),concCC:    val(prefix+'ConcCC'),
+        evaluation: val(prefix+'Evaluation'),
+        studentEval: val(prefix+'StudentEval'),
+        homework:   val(prefix+'Homework')
+      };
+    }
+
+    function collectRemedialPlan(existingId) {
+      return {
+        id: existingId || ('lp_' + Date.now()),
+        ownerId: user.id,
+        planType: 'remedial',
+        createdAt: existingId ? undefined : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        school:    val('remSchool'),     teacher:   val('remTeacher'),
+        subject:   val('remSubject'),    className: val('remClass'),
+        period:    val('remPeriod'),     date:      val('remDate'),
+        topic:     val('remLessonTitle'),lessonTitle:val('remLessonTitle'),
+        numRemediation:  val('remNumRemediation'),
+        numConsolidation:val('remNumConsolidation'),
+        numExtended:     val('remNumExtended'),
+        group1Obj: val('remGroup1Obj'),  group2Obj: val('remGroup2Obj'), group3Obj: val('remGroup3Obj'),
+        problems:  val('remProblems'),   activities: val('remActivities'),
+        steps:     val('remSteps'),      aids:       val('remAids'),
+        otherLearners:  val('remOtherLearners'),
+        consActivities: val('remConsActivities'), consMethod: val('remConsMethod'), consAids: val('remConsAids'),
+        extActivities:  val('remExtActivities'),  extMethod:  val('remExtMethod'),  extAids:  val('remExtAids')
+      };
+    }
+
+    async function savePlan() {
+      if (currentPlanType === 'remedial') {
+        if (!val('remSubject') || !val('remLessonTitle')) { IA.toast('Please enter Subject and Lesson Title', 'error'); return; }
+
+        const plan = collectRemedialPlan(editingPlanId);
+        if (editingPlanId) {
+          const existing = plans.find(p => p.id === editingPlanId);
+          if (existing) plan.createdAt = existing.createdAt;
+          await cloudSave(plan);
+          IA.toast('Remedial lesson plan updated!', 'success');
+          editingPlanId = null;
+          cancelForm();
+          loadPlans();
+          return;
+        }
+
+        // Check lesson plan limit
+        const limit = typeof IA.getLessonPlanLimit === 'function' ? IA.getLessonPlanLimit(user) : 4;
+        const used  = plans.length;
+        if (used >= limit) {
+          const planName = IA.plans[IA.getUserPlan(user)]?.name || 'Free';
+          IA.toast('❌ Limit reached: ' + used + '/' + limit + ' plans on ' + planName + '. Delete a plan or upgrade.', 'error');
+          setTimeout(() => window.location.href = 'upgrade.html', 2500);
+          return;
+        }
+
+        // Track usage
+        const usersArr = IA.getUsers();
+        const uIdx = usersArr.findIndex(u => u.id === user.id);
+        if (uIdx >= 0) {
+          usersArr[uIdx].lessonPlansCreated = (usersArr[uIdx].lessonPlansCreated || 0) + 1;
+          IA.saveUsers(usersArr);
+        }
+
+        await cloudSave(plan);
+        const remRemaining = limit === Infinity ? '∞' : (limit - (used + 1));
+        IA.toast('✅ Remedial plan saved! ' + (used + 1) + '/' + (limit === Infinity ? '∞' : limit) + ' used — ' + remRemaining + ' slot' + (remRemaining === 1 ? '' : 's') + ' remaining', 'success');
+        cancelForm();
+        loadPlans();
+        return;
+      }
+
+      if (!val('lpSubject') || !val('lpTopic')) { IA.toast('Please enter Subject and Lesson Title', 'error'); return; }
+
+      // Check lesson plan limit
+      const limit = typeof IA.getLessonPlanLimit === 'function' ? IA.getLessonPlanLimit(user) : 4;
+      const used  = plans.length;
+      if (used >= limit) {
+        const planName = IA.plans[IA.getUserPlan(user)]?.name || 'Free';
+        IA.toast('❌ Limit reached: ' + used + '/' + limit + ' plans on ' + planName + '. Delete a plan or upgrade.', 'error');
+        setTimeout(() => window.location.href = 'upgrade.html', 2500);
+        return;
+      }
+
+      const plan = collectPlan('lp', null);
+      // Track usage
+      const users = IA.getUsers();
+      const idx = users.findIndex(u => u.id === user.id);
+      if (idx >= 0) {
+        users[idx].lessonPlansCreated = (users[idx].lessonPlansCreated || 0) + 1;
+        IA.saveUsers(users);
+      }
+
+      await cloudSave(plan);
+      const remaining = limit === Infinity ? '∞' : (limit - (used + 1));
+      IA.toast('✅ Saved! ' + (used + 1) + '/' + (limit === Infinity ? '∞' : limit) + ' used — ' + remaining + ' slot' + (remaining === 1 ? '' : 's') + ' remaining', 'success');
+      cancelForm();
+      loadPlans();
+    }
+
+    async function saveEdit() {
+      const id = val('editId');
+      if (!id) return;
+      const plan = collectPlan('edit', id);
+      const existing = plans.find(p => p.id === id);
+      if (existing) plan.createdAt = existing.createdAt;
+      await cloudSave(plan);
+      IA.toast('Changes saved!', 'success');
+      cancelEdit();
+      loadPlans();
+    }
+
+    // ── Local storage helpers for instant load ──
+    function localKey() { return 'ba_lessonplans_' + user.id; }
+    function localSavePlans(arr) {
+      try { localStorage.setItem(localKey(), JSON.stringify(arr)); } catch(e) {}
+    }
+    function localLoadPlans() {
+      try { const d = localStorage.getItem(localKey()); return d ? JSON.parse(d) : []; } catch(e) { return []; }
+    }
+
+    async function cloudSave(plan) {
+      // Save to localStorage immediately
+      const local = localLoadPlans();
+      const idx = local.findIndex(x => x.id === plan.id);
+      if (idx >= 0) local[idx] = plan; else local.push(plan);
+      localSavePlans(local);
+
+      // Try Firestore in background (no blocking wait)
+      try {
+        let db = IA._getFirestore();
+        if (!db) {
+          for (let i = 0; i < 5; i++) {
+            await new Promise(r => setTimeout(r, 500));
+            db = IA._getFirestore();
+            if (db) break;
+          }
+        }
+        if (db) {
+          const { doc, setDoc } = await IA._firestoreOps();
+          await setDoc(doc(db, 'lessonplans', plan.id), plan);
+        }
+      } catch(e) { console.warn('Firestore sync failed (plan saved locally):', e); }
+    }
+
+    async function loadPlans() {
+      const container = document.getElementById('plansContainer');
+      container.style.display = 'block';
+
+      // 1. Show local plans IMMEDIATELY — no spinner wait
+      plans = localLoadPlans();
+      plans.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+      renderPlans(container);
+
+      // 2. Try to sync from Firestore with a hard 5s timeout
+      try {
+        let db = IA._getFirestore();
+        if (!db) {
+          await Promise.race([
+            new Promise(async resolve => {
+              for (let i = 0; i < 8; i++) {
+                await new Promise(r => setTimeout(r, 500));
+                db = IA._getFirestore();
+                if (db) break;
+              }
+              resolve();
+            }),
+            new Promise(r => setTimeout(r, 5000)) // hard timeout
+          ]);
+        }
+        if (db) {
+          const { collection, getDocs } = await IA._firestoreOps();
+          const snap = await getDocs(collection(db, 'lessonplans'));
+          const remote = snap.docs.map(d => d.data()).filter(p => p.ownerId === user.id);
+          if (remote.length > 0 || plans.length === 0) {
+            plans = remote;
+            plans.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+            localSavePlans(plans); // keep local in sync
+            renderPlans(container);
+          }
+        }
+      } catch(e) { console.warn('Firestore load failed, using local data:', e); }
+    }
+
+    function renderPlans(container) {
+      try {
+        const limit = typeof IA.getLessonPlanLimit === 'function' ? IA.getLessonPlanLimit(user) : 4;
+        const usageEl = document.getElementById('lpUsageText');
+        if (usageEl) {
+          const pct = limit === Infinity ? '' : plans.length + '/' + limit + ' plans used';
+          usageEl.textContent = pct;
+          if (limit !== Infinity && plans.length >= limit) usageEl.style.color = 'var(--red)';
+          else usageEl.style.color = 'var(--accent)';
+        }
+
+        if (!plans.length) {
+          container.innerHTML = `<div style="text-align:center;padding:60px;color:var(--text2)">
+            <div style="font-size:48px;margin-bottom:12px">📚</div>
+            <h3>No lesson plans yet</h3>
+            <p>Click "+ New Plan" to create your first AI-powered Rwanda CBC lesson plan</p>
+          </div>`;
+          return;
+        }
+        container.innerHTML = plans.map(p => `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:16px;font-weight:800;color:var(--text1)">${p.subject||''}${p.topic ? ' — ' + p.topic : ''}
+                  <span class="lp-badge ${p.planType==='remedial' ? 'lp-badge-remedial' : 'lp-badge-regular'}">${p.planType==='remedial' ? '🩹 Remedial' : '📘 Regular'}</span>
+                </div>
+                <div style="font-size:13px;color:var(--text2);margin-top:4px">${p.planType==='remedial'
+                  ? `Class: ${p.className||'-'} &nbsp;·&nbsp; Period ${p.period||'-'} &nbsp;·&nbsp; ${p.date||'-'}`
+                  : `Class: ${p.className||'-'} &nbsp;·&nbsp; Term ${p.term||'-'} &nbsp;·&nbsp; ${p.date||'-'} &nbsp;·&nbsp; ${p.duration||'-'}`}</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:2px">👤 ${p.teacher||'-'} &nbsp;·&nbsp; 🏫 ${p.school||'-'}</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button onclick="editPlan('${p.id}')" class="btn btn-secondary btn-sm">✏️ Edit</button>
+                <button onclick="downloadPDF('${p.id}', this)" class="btn btn-primary btn-sm">📄 PDF</button>
+                <button onclick="deletePlan('${p.id}')" class="btn btn-danger btn-sm">🗑</button>
+              </div>
+            </div>
+          </div>`).join('');
+      } catch(err) {
+        console.error('renderPlans error:', err);
+        container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">
+          ⚠️ Error loading plans: ${err.message}<br><br>
+          <button onclick="loadPlans()" class="btn btn-primary">🔄 Retry</button>
+        </div>`;
+      }
+    }
+
+    function editPlan(planId) {
+      const p = plans.find(x => x.id === planId);
+      if (!p) return;
+
+      if (p.planType === 'remedial') { editRemedialPlan(p); return; }
+
+      document.getElementById('plansContainer').style.display = 'none';
+      document.getElementById('createForm').style.display = 'none';
+      document.getElementById('editForm').style.display = 'block';
+      document.getElementById('editForm').scrollIntoView({behavior:'smooth'});
+
+      set('editId', p.id);
+      set('editSchool', p.school);      set('editTeacher', p.teacher);
+      set('editTerm', p.term);          set('editDate', p.date);
+      set('editSubject', p.subject);    set('editClass', p.className);
+      set('editUnitNo', p.unitNo);      set('editLessonNo', p.lessonNo);
+      set('editDuration', p.duration);  set('editClassSize', p.classSize);
+      set('editSEN', p.sen);            set('editUnitTitle', p.unitTitle);
+      set('editCompetence', p.competence); set('editTopic', p.topic);
+      set('editObjective', p.objective); set('editPlan', p.plan);
+      set('editMaterials', p.materials); set('editReferences', p.references);
+      set('editIntroTime', p.introTime); set('editIntroTeacher', p.introTeacher);
+      set('editIntroLearner', p.introLearner); set('editIntroCC', p.introCC);
+      set('editDevTime', p.devTime);    set('editDevTeacher', p.devTeacher);
+      set('editDevLearner', p.devLearner); set('editDevCC', p.devCC);
+      set('editConcTime', p.concTime);  set('editConcTeacher', p.concTeacher);
+      set('editConcLearner', p.concLearner); set('editConcCC', p.concCC);
+      set('editEvaluation', p.evaluation);
+      set('editStudentEval', p.studentEval);
+      set('editHomework', p.homework);
+    }
+
+    function editRemedialPlan(p) {
+      editingPlanId = p.id;
+      document.getElementById('plansContainer').style.display = 'none';
+      document.getElementById('editForm').style.display = 'none';
+      document.getElementById('createForm').style.display = 'block';
+      selectPlanType('remedial');
+
+      set('remSchool', p.school);       set('remTeacher', p.teacher);
+      set('remSubject', p.subject);     set('remClass', p.className);
+      set('remPeriod', p.period);       set('remDate', p.date);
+      set('remLessonTitle', p.topic || p.lessonTitle);
+      set('remNumRemediation', p.numRemediation);
+      set('remNumConsolidation', p.numConsolidation);
+      set('remNumExtended', p.numExtended);
+      set('remGroup1Obj', p.group1Obj); set('remGroup2Obj', p.group2Obj); set('remGroup3Obj', p.group3Obj);
+      set('remProblems', p.problems);   set('remActivities', p.activities);
+      set('remSteps', p.steps);         set('remAids', p.aids);
+      set('remOtherLearners', p.otherLearners);
+      set('remConsActivities', p.consActivities); set('remConsMethod', p.consMethod); set('remConsAids', p.consAids);
+      set('remExtActivities', p.extActivities);   set('remExtMethod', p.extMethod);   set('remExtAids', p.extAids);
+
+      document.getElementById('remAiSections').style.display = 'block';
+      document.getElementById('createForm').scrollIntoView({behavior:'smooth'});
+    }
+
+    function buildPDF(p) {
+      const fmtDate = p.date ? new Date(p.date).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+      const nl = s => String(s==null?'':(Array.isArray(s)?s.join('\n'):s)).replace(/\n/g,'<br>');
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+      <style>
+        *{box-sizing:border-box}
+        body{font-family:Arial,sans-serif;margin:14mm 10mm;font-size:10px;color:#000;line-height:1.3;width:auto}
+        h2{text-align:center;font-size:13px;font-weight:bold;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px}
+        .header-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:10px}
+        table{width:100%;border-collapse:collapse;margin-bottom:0;table-layout:fixed}
+        td,th{border:1px solid #000;padding:4px 6px;vertical-align:top;font-size:10px;word-wrap:break-word;overflow-wrap:break-word}
+        tr{page-break-inside:avoid}
+        .lbl{font-weight:bold;background:#fff}
+        .col-header{font-weight:bold;background:#fff;text-align:center;font-size:10px}
+        .phase-lbl{font-weight:bold;vertical-align:top}
+        .activity-header{font-weight:bold;text-align:center;background:#fff}
+        @page{size:A4 portrait;margin:14mm 10mm}
+        @media print{body{margin:0}tr{page-break-inside:avoid}}
+      </style></head><body>
+      <h2>LESSON PLAN</h2>
+      <div class="header-row">
+        <span><strong>School Name:</strong> ${p.school||''}</span>
+        <span><strong>Teacher's Name:</strong> ${(p.teacher||'').toUpperCase()}</span>
+      </div>
+      <table>
+        <colgroup>
+          <col style="width:9%"><col style="width:11%"><col style="width:13%"><col style="width:9%">
+          <col style="width:9%"><col style="width:11%"><col style="width:9%"><col style="width:9%">
+        </colgroup>
+        <tr>
+          <th class="col-header">Term</th><th class="col-header">Date</th>
+          <th class="col-header">Subject</th><th class="col-header">Class</th>
+          <th class="col-header">Unit No</th><th class="col-header">Lesson No</th>
+          <th class="col-header">Duration</th><th class="col-header">Class size</th>
+        </tr>
+        <tr>
+          <td>${p.term||''}</td><td>${fmtDate}</td><td>${p.subject||''}</td>
+          <td>${p.className||''}</td><td>${p.unitNo||''}</td><td>${p.lessonNo||''}</td>
+          <td>${p.duration||''}</td><td>${p.classSize||''}</td>
+        </tr>
+        <tr><td colspan="2" class="lbl">Type of special educational needs</td><td colspan="6">${p.sen||''}</td></tr>
+        <tr><td colspan="2" class="lbl">Unit title</td><td colspan="6">${p.unitTitle||''}</td></tr>
+        <tr><td colspan="2" class="lbl">Key unit competence</td><td colspan="6">${nl(p.competence)}</td></tr>
+        <tr><td colspan="2" class="lbl">Title of the lesson</td><td colspan="6">${p.topic||''}</td></tr>
+        <tr><td colspan="2" class="lbl">Instructional objectives</td><td colspan="6">${nl(p.objective)}</td></tr>
+        <tr><td colspan="2" class="lbl">Plan of this class (Location)</td><td colspan="6">${p.plan||''}</td></tr>
+        <tr><td colspan="2" class="lbl">Learning materials</td><td colspan="6">${p.materials||''}</td></tr>
+        <tr><td colspan="2" class="lbl">References</td><td colspan="6">${p.references||''}</td></tr>
+      </table>
+
+      <table style="margin-top:0">
+        <colgroup>
+          <col style="width:13%"><col style="width:30%"><col style="width:30%"><col style="width:27%">
+        </colgroup>
+        <tr>
+          <th class="col-header">Timing for each step</th>
+          <th class="col-header" colspan="2">Description of teaching and learning activities</th>
+          <th class="col-header">Generic competences and cross-cutting issues</th>
+        </tr>
+        <tr>
+          <td></td>
+          <td class="activity-header">Teacher's activity</td>
+          <td class="activity-header">Learner's activity</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td class="phase-lbl">Introduction<br>(${p.introTime||'10 min'})</td>
+          <td>${nl(p.introTeacher)}</td><td>${nl(p.introLearner)}</td><td>${nl(p.introCC)}</td>
+        </tr>
+        <tr>
+          <td class="phase-lbl">Lesson Development<br>(${p.devTime||'20 min'})</td>
+          <td>${nl(p.devTeacher)}</td><td>${nl(p.devLearner)}</td><td>${nl(p.devCC)}</td>
+        </tr>
+        <tr>
+          <td class="phase-lbl">Conclusion<br>(${p.concTime||'10 min'})</td>
+          <td>${nl(p.concTeacher)}</td><td>${nl(p.concLearner)}</td><td>${nl(p.concCC)}</td>
+        </tr>
+        <tr>
+          <td colspan="2" class="lbl">Teacher's self-evaluation</td>
+          <td colspan="2">${p.evaluation||'Done.'}</td>
+        </tr>
+      </table>
+      </body></html>`;
+    }
+
+    function buildRemedialPDF(p) {
+      const fmtDate = p.date ? new Date(p.date).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+      const nl = s => (String(s||'')).replace(/\n/g,'<br>');
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+      <style>
+        *{box-sizing:border-box}
+        body{font-family:'Times New Roman',Times,serif;margin:14mm 12mm;font-size:10.5px;color:#000;line-height:1.35;width:auto}
+        h2{text-align:center;font-size:15px;font-weight:bold;margin:0 0 10px;letter-spacing:1px}
+        table{width:100%;border-collapse:collapse;margin-bottom:12px;table-layout:fixed}
+        td,th{border:1px solid #555;padding:5px 7px;vertical-align:top;font-size:10px;word-wrap:break-word;overflow-wrap:break-word}
+        tr{page-break-inside:avoid}
+        .sect-title{font-weight:bold;font-size:11px;padding:5px 7px}
+        .sect-a{background:#fde2e1}
+        .sect-bd{background:#cfe9f7}
+        .col-header{font-weight:bold;background:#fdf0c8;text-align:center}
+        @page{size:A4 portrait;margin:14mm 12mm}
+        @media print{body{margin:0}tr{page-break-inside:avoid}}
+      </style></head><body>
+      <h2>REMEDIAL LEARNING LESSON PLAN</h2>
+
+      <table>
+        <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+        <tr><td colspan="2" class="sect-title sect-a">A. GENERAL INFORMATION</td></tr>
+        <tr><td>School: ${p.school||''}</td><td>Subject: ${p.subject||''}</td></tr>
+        <tr><td>Class: ${p.className||''}</td><td>Lesson: ${p.topic||p.lessonTitle||''}</td></tr>
+        <tr><td>Period: ${p.period||''}</td><td>Date: ${fmtDate}</td></tr>
+        <tr>
+          <td>Teacher: ${(p.teacher||'').toUpperCase()}</td>
+          <td>- Number of learners who need remediation activities: ${p.numRemediation||0}<br>
+              - Number of students who need consolidation activities: ${p.numConsolidation||0}<br>
+              - Number of students who need extended activities: ${p.numExtended||0}</td>
+        </tr>
+      </table>
+
+      <table>
+        <colgroup><col style="width:38%"><col style="width:62%"></colgroup>
+        <tr><td colspan="2" class="sect-title sect-bd">B. IDENTIFIED GROUPS OF STRUGGLING LEARNERS</td></tr>
+        <tr>
+          <th class="col-header">Categories of learners who need the remedial activities</th>
+          <th class="col-header">Objectives per categories identified</th>
+        </tr>
+        <tr><td>Group 1: Slow learners who need remediation activities</td><td>${nl(p.group1Obj)}</td></tr>
+        <tr><td>Group 2: Learners who need consolidation activities</td><td>${nl(p.group2Obj)}</td></tr>
+        <tr><td>Group 3: Learners who need extended activities</td><td>${nl(p.group3Obj)}</td></tr>
+      </table>
+
+      <table>
+        <colgroup><col style="width:22%"><col style="width:28%"><col style="width:27%"><col style="width:23%"></colgroup>
+        <tr><td colspan="4" class="sect-title sect-bd">C. IDENTIFIED PROBLEMS, REMEDIAL ACTIVITIES AND LEARNING AIDS</td></tr>
+        <tr>
+          <th class="col-header">Identified problems</th>
+          <th class="col-header">Remedial activities</th>
+          <th class="col-header">Used steps including assessment</th>
+          <th class="col-header">Teaching and learning aids</th>
+        </tr>
+        <tr>
+          <td>${nl(p.problems)}</td>
+          <td>${nl(p.activities)}</td>
+          <td>${nl(p.steps)}</td>
+          <td>${nl(p.aids)}</td>
+        </tr>
+      </table>
+
+      <table>
+        <colgroup><col style="width:22%"><col style="width:30%"><col style="width:25%"><col style="width:23%"></colgroup>
+        <tr><td colspan="4" class="sect-title sect-bd">D. CONSOLIDATION AND EXTENDED ACTIVITIES FOR OTHER LEARNERS</td></tr>
+        <tr>
+          <th class="col-header">Category of learners</th>
+          <th class="col-header">Consolidation / Extended activities</th>
+          <th class="col-header">Methodology used</th>
+          <th class="col-header">Learning aids</th>
+        </tr>
+        <tr>
+          <td>${nl(p.otherLearners)}</td>
+          <td><strong>Consolidation:</strong><br>${nl(p.consActivities)}<br><br><strong>Extended:</strong><br>${nl(p.extActivities)}</td>
+          <td><strong>Consolidation:</strong><br>${nl(p.consMethod)}<br><br><strong>Extended:</strong><br>${nl(p.extMethod)}</td>
+          <td><strong>Consolidation:</strong><br>${nl(p.consAids)}<br><br><strong>Extended:</strong><br>${nl(p.extAids)}</td>
+        </tr>
+      </table>
+      </body></html>`;
+    }
+
+    let _pdfBlobUrl = null;
+    function closePdfModal() {
+      document.getElementById('pdfModal').style.display = 'none';
+      document.getElementById('pdfModalFrame').src = 'about:blank';
+      if (_pdfBlobUrl) { URL.revokeObjectURL(_pdfBlobUrl); _pdfBlobUrl = null; }
+    }
+
+    async function downloadPDF(planId, btn) {
+      const p = plans.find(x => x.id === planId);
+      if (!p) { alert('Lesson plan not found.'); return; }
+
+      const originalLabel = btn ? btn.innerHTML : '';
+      if (btn) { btn.innerHTML = '⏳ Generating PDF...'; btn.disabled = true; }
+
+      const safe = s => (s || '').toString().replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      const filename = `LessonPlan_${safe(p.subject) || 'Plan'}_${safe(p.topic) || safe(p.unitTitle) || ''}`.replace(/_+/g, '_').replace(/^_+|_+$/g, '') + '.pdf';
+
+      const html = p.planType === 'remedial' ? buildRemedialPDF(p) : buildPDF(p);
+
+      let iframe = null;
+      try {
+        // Capture at wider width then scale down to A4 portrait — prevents right-side cutoff
+        const CAPTURE_W = 900; // portrait A4 render width
+        const MARGIN_MM = 10;
+
+        iframe = document.createElement('iframe');
+        iframe.style.cssText = `position:fixed;left:-9999px;top:0;width:${CAPTURE_W}px;height:2000px;border:none;visibility:hidden;`;
+        document.body.appendChild(iframe);
+
+        await new Promise(resolve => {
+          iframe.onload = () => setTimeout(resolve, 800);
+          iframe.srcdoc = html;
+          setTimeout(resolve, 4000);
+        });
+
+        const idoc = iframe.contentDocument || iframe.contentWindow.document;
+        idoc.body.style.width = CAPTURE_W + 'px';
+        idoc.body.style.background = '#fff';
+        idoc.body.style.margin = '0';
+        idoc.body.style.padding = '20px';
+
+        const totalH = Math.max(idoc.body.scrollHeight, idoc.documentElement.scrollHeight) + 40;
+        iframe.style.height = totalH + 'px';
+        await new Promise(r => setTimeout(r, 400));
+
+        const canvas = await html2canvas(idoc.body, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          windowWidth: CAPTURE_W,
+          width: CAPTURE_W,
+          scrollY: 0
+        });
+
+        document.body.removeChild(iframe);
+        iframe = null;
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+
+        // A4 portrait dimensions in mm
+        const PAGE_W_MM = 210;
+        const PAGE_H_MM = 297;
+        const CONTENT_W_MM = PAGE_W_MM - MARGIN_MM * 2;
+        const CONTENT_H_MM = PAGE_H_MM - MARGIN_MM * 2;
+
+        // Canvas pixel dimensions
+        const cW = canvas.width;   // pixels at scale:2
+        const cH = canvas.height;
+
+        // How many canvas pixels fit in one page's content height
+        const pxPerMM = cW / CONTENT_W_MM;
+        const pageHeightPx = CONTENT_H_MM * pxPerMM;
+
+        let srcY = 0;
+        let pageNum = 0;
+
+        while (srcY < cH) {
+          if (pageNum > 0) pdf.addPage();
+
+          const sliceH = Math.min(pageHeightPx, cH - srcY);
+          const sliceMM = sliceH / pxPerMM;
+
+          // Draw this slice to a temp canvas
+          const tmp = document.createElement('canvas');
+          tmp.width = cW;
+          tmp.height = sliceH;
+          tmp.getContext('2d').drawImage(canvas, 0, srcY, cW, sliceH, 0, 0, cW, sliceH);
+
+          pdf.addImage(tmp.toDataURL('image/jpeg', 0.93), 'JPEG',
+            MARGIN_MM, MARGIN_MM, CONTENT_W_MM, sliceMM);
+
+          srcY += pageHeightPx;
+          pageNum++;
+        }
+
+        const blob = pdf.output('blob');
+        if (_pdfBlobUrl) URL.revokeObjectURL(_pdfBlobUrl);
+        _pdfBlobUrl = URL.createObjectURL(blob);
+
+        // Try auto-download
+        try {
+          const a = document.createElement('a');
+          a.href = _pdfBlobUrl; a.download = filename;
+          document.body.appendChild(a); a.click(); a.remove();
+        } catch(e) {}
+
+        // Show preview modal
+        const frame = document.getElementById('pdfModalFrame');
+        const dl = document.getElementById('pdfModalDownload');
+        frame.src = _pdfBlobUrl;
+        dl.href = _pdfBlobUrl;
+        dl.download = filename;
+        document.getElementById('pdfModal').style.display = 'flex';
+
+      } catch(e) {
+        console.error('PDF error:', e);
+        if (iframe && iframe.parentNode) document.body.removeChild(iframe);
+        // Fallback: open print window
+        const w = window.open('', '_blank');
+        if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 600); }
+        else alert('PDF failed: ' + (e.message || e));
+      } finally {
+        if (btn) { btn.innerHTML = originalLabel; btn.disabled = false; }
+      }
+    }
+
+    async function deletePlan(planId) {
+      if (!confirm('Delete this lesson plan?')) return;
+
+      // Remove from local storage immediately
+      const local = localLoadPlans().filter(p => p.id !== planId);
+      localSavePlans(local);
+      plans = plans.filter(p => p.id !== planId);
+
+      // Decrement usage counter on user profile
+      try {
+        const users = IA.getUsers();
+        const idx = users.findIndex(u => u.id === user.id);
+        if (idx >= 0 && users[idx].lessonPlansCreated > 0) {
+          users[idx].lessonPlansCreated = Math.max(0, (users[idx].lessonPlansCreated || 1) - 1);
+          IA.saveUsers(users);
+        }
+      } catch(e) {}
+
+      const container = document.getElementById('plansContainer');
+      renderPlans(container);
+
+      const limit = typeof IA.getLessonPlanLimit === 'function' ? IA.getLessonPlanLimit(user) : 4;
+      const remaining = limit === Infinity ? '∞' : (limit - plans.length);
+      IA.toast('Plan deleted — ' + plans.length + '/' + (limit === Infinity ? '∞' : limit) + ' plans (' + remaining + ' slot' + (remaining === 1 ? '' : 's') + ' free)', 'warn');
+
+      // Remove from Firestore in background
+      try {
+        const db = IA._getFirestore();
+        if (db) { const { doc, deleteDoc } = await IA._firestoreOps(); await deleteDoc(doc(db, 'lessonplans', planId)); }
+      } catch(e) {}
+    }
+
+    try { loadPlans(); } catch(e) {
+      console.error('loadPlans startup error:', e);
+      document.getElementById('plansContainer').innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">⚠️ ${e.message}<br><br><button onclick="loadPlans()" class="btn btn-primary">🔄 Retry</button></div>`;
+    }
+
+    // Absolute safety net — if spinner still showing after 4s, force clear it
+    setTimeout(() => {
+      const c = document.getElementById('plansContainer');
+      if (c && c.innerHTML.includes('Loading plans')) {
+        console.warn('Safety net triggered — forcing renderPlans');
+        try { renderPlans(c); } catch(e) {
+          c.innerHTML = `<div style="text-align:center;padding:60px;color:var(--text2)">
+            <div style="font-size:48px;margin-bottom:12px">📚</div>
+            <h3>No lesson plans yet</h3>
+            <p>Click "+ New Plan" to create your first AI-powered Rwanda CBC lesson plan</p>
+            <br><button onclick="loadPlans()" class="btn btn-secondary" style="margin-top:8px">🔄 Refresh</button>
+          </div>`;
+        }
+      }
+    }, 4000);
+  </script>
+</body>
+</html>
