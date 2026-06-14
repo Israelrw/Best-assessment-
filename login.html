@@ -67,7 +67,7 @@
           <button class="pass-toggle" onclick="togglePass('loginPass',this)" type="button">👁</button>
         </div>
       </div>
-      <button class="btn btn-primary btn-lg w-full" onclick="doLogin()">Sign In →</button>
+      <button id="loginBtn" class="btn btn-primary btn-lg w-full" onclick="doLogin()">Sign In →</button>
       <div style="text-align:center;margin-top:12px">
         <a href="#" onclick="showForgotPassword()" style="color:var(--accent);font-size:13px;text-decoration:none">Forgot password?</a>
       </div>
@@ -162,6 +162,13 @@
       btn.textContent = inp.type === 'password' ? '👁' : '🙈';
     }
 
+    function showBtn(id, enabled, text) {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.disabled = !enabled;
+      btn.textContent = text;
+    }
+
     async function doLogin() {
       const uname = document.getElementById('loginUser').value.trim();
       const pass  = document.getElementById('loginPass').value;
@@ -207,8 +214,21 @@
                 IA.toast('Invalid username or password', 'error');
                 return;
               }
+            } else {
+              IA.toast('Account not found in cloud. Check username/password.', 'error');
+              showBtn('loginBtn', true, 'Sign In →');
+              return;
             }
-          } catch(e) { console.warn('Firestore lookup failed:', e); }
+          } catch(e) {
+            console.warn('Firestore lookup failed:', e);
+            IA.toast('Connection error: ' + e.message, 'error');
+            showBtn('loginBtn', true, 'Sign In →');
+            return;
+          }
+        } else {
+          IA.toast('Cannot connect to server. Check your internet.', 'error');
+          showBtn('loginBtn', true, 'Sign In →');
+          return;
         }
       }
 
