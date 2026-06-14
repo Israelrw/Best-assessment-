@@ -303,7 +303,8 @@
       el.innerHTML = filtered.map(t => {
         const qCount = (t.questions||[]).length;
         const created = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB') : '—';
-        const shareUrl = window.location.origin + '/exam.html?t=' + t.id;
+        const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
+        const shareUrl = window.location.origin + basePath + '/exam.html?t=' + t.id;
         return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
             <div style="flex:1;min-width:0">

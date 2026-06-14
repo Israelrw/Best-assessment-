@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<script>
+  // GitHub Pages 404 redirect fix
+  var path = window.location.pathname;
+  var repo = '/Best-assessment-';
+  if (path.indexOf(repo) === 0) {
+    path = path.slice(repo.length) || '/';
+  }
+  var search = window.location.search;
+  var hash = window.location.hash;
+  window.location.replace(repo + path + search + hash);
+</script>
+</head>
+<body>Redirecting...</body>
+</html>
