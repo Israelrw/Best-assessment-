@@ -167,157 +167,63 @@
       const pass  = document.getElementById('loginPass').value;
       if (!uname || !pass) { IA.toast('Please fill in all fields','error'); return; }
 
+      showBtn('loginBtn', false, '⏳ Signing in...');
+
       let users = IA.getUsers();
       let user  = users.find(u => (u.username === uname || u.email === uname) && u.password === btoa(pass));
 
-      // Wait for Firebase to init (up to 10 seconds)
-      // Try fallback init first
-      if (!IA._getFirestore()) await IA._initFirebase();
-      let db   = null;
-      let auth = null;
-      for (let i = 0; i < 20; i++) {
-        await new Promise(r => setTimeout(r, 500));
-        db   = IA._getFirestore();
-        auth = window._baAuth;
-        if (db && auth) break;
-        if (i === 5 && !db) await IA._initFirebase();
-      }
+      // If not found locally, try Firestore directly
+      if (!user) {
+        IA.toast('Checking credentials...', 'info');
+        if (!IA._getFirestore()) await IA._initFirebase();
+        let db = null;
+        for (let i = 0; i < 20; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          db = IA._getFirestore();
+          if (db) break;
+          if (i === 5) await IA._initFirebase();
+        }
 
-      // Try Firebase Auth (handles password resets)
-      if (!user && auth) {
-        try {
-          IA.toast('Checking credentials...', 'info');
-          const { signInWithEmailAndPassword } = window._baAuthOps;
-          // Try email login (uname might be email)
-          let email = uname;
-          // If username given, find email from Firestore
-          if (!uname.includes('@') && db) {
-            try {
-              const { collection, query, where, getDocs } = await IA._firestoreOps();
-              const q = query(collection(db, 'users'), where('username', '==', uname));
-              const snap = await getDocs(q);
-              if (!snap.empty) email = snap.docs[0].data().email;
-            } catch(e) {}
-          }
-          const cred = await signInWithEmailAndPassword(auth, email, pass);
-          // Firebase login succeeded — find or restore user
-          if (db) {
-            const { collection, query, where, getDocs, doc, setDoc } = await IA._firestoreOps();
-            const q2 = query(collection(db, 'users'), where('email', '==', email));
-            const snap2 = await getDocs(q2);
-            if (!snap2.empty) {
-              const cloudUser = snap2.docs[0].data();
-              cloudUser.password = btoa(pass);
-              const idx = users.findIndex(u => u.id === cloudUser.id);
-              if (idx >= 0) users[idx] = cloudUser;
-              else users.push(cloudUser);
-              IA.saveUsers(users);
-              user = cloudUser;
-              // Update password in Firestore too
-              await setDoc(doc(db, 'users', cloudUser.id), cloudUser);
-            } else {
-              // Firebase Auth exists but no profile — create one automatically
-              const firebaseUid = cred.user.uid;
-              const displayName = cred.user.displayName || email.split('@')[0];
-              const newUser = {
-                id: 'u_' + Date.now(),
-                firebaseUid,
-                firstName: displayName,
-                lastName: '',
-                username: email.split('@')[0].replace(/[^a-zA-Z0-9]/g,''),
-                email,
-                password: btoa(pass),
-                plan: 'free',
-                testsCreated: 0,
-                avatar: null,
-                emailVerified: true,
-                createdAt: new Date().toISOString()
-              };
-              await setDoc(doc(db, 'users', newUser.id), newUser);
-              users.push(newUser);
-              IA.saveUsers(users);
-              user = newUser;
-              IA.toast('Profile restored successfully!', 'success');
+        if (db) {
+          try {
+            const { collection, query, where, getDocs } = await IA._firestoreOps();
+            // Try username match
+            let snap = await getDocs(query(collection(db, 'users'), where('username', '==', uname)));
+            if (snap.empty) {
+              // Try email match
+              snap = await getDocs(query(collection(db, 'users'), where('email', '==', uname)));
             }
-          } else {
-            // No Firestore - create minimal local user
-            const newUser = {
-              id: 'u_' + Date.now(),
-              firstName: email.split('@')[0],
-              lastName: '',
-              username: email.split('@')[0],
-              email, password: btoa(pass),
-              plan: 'free', testsCreated: 0,
-              emailVerified: true,
-              createdAt: new Date().toISOString()
-            };
-            users.push(newUser);
-            IA.saveUsers(users);
-            user = newUser;
-          }
-        } catch(e) {
-          console.warn('Firebase auth error:', e.code, e.message);
-          if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
-            IA.toast('Wrong password. Use "Forgot password?" to reset.', 'error');
-            return;
-          }
-          if (e.code === 'auth/user-not-found') {
-            IA.toast('No account found with this email.', 'error');
-            return;
-          }
-          if (e.code === 'auth/too-many-requests') {
-            IA.toast('Too many attempts. Please wait a few minutes and try again.', 'error');
-            return;
-          }
-          if (e.code === 'auth/invalid-email') {
-            // Username given but not email - continue to Firestore check
-          }
+            if (!snap.empty) {
+              const cloudUser = snap.docs[0].data();
+              // Check password
+              if (cloudUser.password === btoa(pass)) {
+                // Restore user to localStorage
+                users.push(cloudUser);
+                IA.saveUsers(users);
+                user = cloudUser;
+                IA.toast('Account restored from cloud!', 'success');
+              } else {
+                showBtn('loginBtn', true, 'Sign In →');
+                IA.toast('Invalid username or password', 'error');
+                return;
+              }
+            }
+          } catch(e) { console.warn('Firestore lookup failed:', e); }
         }
       }
 
-      // Try Firestore username lookup
-      if (!user && db) {
-        try {
-          const { collection, query, where, getDocs } = await IA._firestoreOps();
-          const q = query(collection(db, 'users'), where('username', '==', uname));
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            const cloudUser = snap.docs[0].data();
-            if (cloudUser.password === btoa(pass)) {
-              users.push(cloudUser);
-              IA.saveUsers(users);
-              user = cloudUser;
-            }
-          }
-        } catch(e) {}
+      if (!user) {
+        showBtn('loginBtn', true, 'Sign In →');
+        IA.toast('Invalid username or password', 'error');
+        return;
       }
 
-      if (!user) { IA.toast('Invalid username or password','error'); return; }
-
-      // Restore tests from cloud if local is empty
-      const myTests = IA.getTests().filter(t => t.ownerId === user.id);
-      if (myTests.length === 0) {
-        try {
-          const db = IA._getFirestore();
-          if (db) {
-            const { collection, query, where, getDocs } = await IA._firestoreOps();
-            const q = query(collection(db, 'tests'), where('ownerId', '==', user.id));
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-              const cloudTests = snap.docs.map(d => d.data());
-              const allTests = IA.getTests();
-              cloudTests.forEach(t => { if (!allTests.find(x => x.id === t.id)) allTests.push(t); });
-              localStorage.setItem('ia_tests', JSON.stringify(allTests));
-              IA.toast('Tests restored from cloud ✓', 'success');
-            }
-          }
-        } catch(e) {}
-      }
-
+      // Login success
       IA.setCurrentUser(user);
-      IA.toast('Welcome back, ' + user.firstName + '! 👋','success');
+      IA.toast('Welcome back, ' + (user.firstName || user.username) + '!', 'success');
       setTimeout(() => window.location.href = 'tests.html', 800);
     }
+
 
     let _pendingUser = null;
     let _firebaseUser = null;
