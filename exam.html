@@ -755,17 +755,26 @@
       savingDiv.innerHTML = '<div style="font-size:48px">💾</div><div style="font-size:18px;font-weight:700;color:#fff">Saving your results...</div><div style="font-size:14px;color:#94a3b8">Please wait a moment</div>';
       document.body.appendChild(savingDiv);
 
+      // Wait for Firebase to initialize (up to 15 seconds)
+      let db = null;
+      for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        db = IA._getFirestore();
+        if (db) break;
+      }
+
       // Try to save to Firestore with retries
       let saved = false;
-      for (let attempt = 0; attempt < 8; attempt++) {
-        try {
-          await new Promise(r => setTimeout(r, 1000));
-          const db = IA._getFirestore();
-          if (db) {
+      if (db) {
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
             const ok = await IA.saveResultToCloud(result);
             if (ok) { saved = true; break; }
+          } catch(e) { 
+            console.warn('Save attempt', attempt+1, 'failed:', e.message);
+            await new Promise(r => setTimeout(r, 1000));
           }
-        } catch(e) { console.warn('Save attempt', attempt+1, 'failed:', e.message); }
+        }
       }
 
       if (!saved) {
